@@ -10,19 +10,20 @@ Recover") is not started — do that after Phase 1 is demoed and passed.
 Core principle from the spec: *the application stays simple, the network is the project.*
 Don't over-engineer the backends — the marks are for the networking, not the code.
 
-## 0. Before you touch anything: pick your team domain
+## 0. Team domain
 
-The whole project uses a private domain name `app.teamX.test` / `api.teamX.test`. Pick your
-actual team number/name (e.g. `team7`) and replace every occurrence of `team1` in this repo
-with it. One command does it everywhere (run from the repo root, on any machine, before
-copying files out):
+This team has no assigned team number, so the private domain is set to:
 
-```bash
-grep -rl 'team1\.test' . --exclude-dir=.git | xargs sed -i '' 's/team1\.test/team7.test/g'
+```
+app.cn_team.test
+api.cn_team.test
 ```
 
-Replace `team7` with your real team name. Do this **once**, commit it, then everyone pulls
-the updated repo.
+This is already applied throughout every config template and script in this repo — nothing
+to edit for this step. (Note: DNS labels conventionally use hyphens, not underscores, but
+`cn_team.test` is a private `.test` domain used only by your own dnsmasq/nginx/curl/browser —
+underscores work fine there. If you ever hit a tool that specifically rejects the underscore,
+the one-line fix is: `grep -rl 'cn_team\.test' . --exclude-dir=.git | xargs sed -i '' 's/cn_team\.test/cn-team.test/g'`.)
 
 ## 1. Who does what — the 4 roles
 
@@ -83,9 +84,9 @@ Concretely, from any client Mac, this must all work with **no `-k` flag** (i.e. 
 is actually trusted):
 
 ```bash
-dig app.team7.test                       # resolves to Mac 2's IP via your DNS
-curl -sI https://app.team7.test/          # no cert warning
-for i in $(seq 1 6); do curl -s https://app.team7.test/api/status; echo; done
+dig app.cn_team.test                       # resolves to Mac 2's IP via your DNS
+curl -sI https://app.cn_team.test/          # no cert warning
+for i in $(seq 1 6); do curl -s https://app.cn_team.test/api/status; echo; done
 # ^ should alternate "backend":"A" and "backend":"B"
 ```
 

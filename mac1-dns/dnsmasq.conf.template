@@ -3,10 +3,10 @@
 # then replace the placeholders below with your actual values.
 
 # --- Private DNS records ---
-# Replace team1.test with your real team domain (see repo root README step 0)
+# Replace cn_team.test with your real team domain (see repo root README step 0)
 # Replace <MAC2_IP> with Mac 2's actual LAN IP from docs/topology.md
-address=/app.team1.test/<MAC2_IP>
-address=/api.team1.test/<MAC2_IP>
+address=/app.cn_team.test/<MAC2_IP>
+address=/api.cn_team.test/<MAC2_IP>
 
 # --- Listen configuration ---
 # Replace <MAC1_IP> with this machine's own LAN IP

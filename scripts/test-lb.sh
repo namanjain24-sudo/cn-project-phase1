@@ -3,7 +3,7 @@
 # Run from any client machine, after DNS + TLS + both backends are up.
 set -euo pipefail
 
-DOMAIN="${1:-app.team1.test}"
+DOMAIN="${1:-app.cn_team.test}"
 COUNT="${2:-10}"
 
 echo "Sending $COUNT requests to https://$DOMAIN/api/status ..."

@@ -1,7 +1,7 @@
 # nginx config for the edge / reverse proxy / load balancer (Mac 2) — Tasks D + E
 #
 # Copy this to your real nginx config location and rename without ".template".
-# Replace placeholders: team1.test, <MAC3_IP>, <MAC4_IP>.
+# Replace placeholders: cn_team.test, <MAC3_IP>, <MAC4_IP>.
 #
 # If your machine won't let you bind to 80/443, use the 8080/8443 versions instead
 # (see the commented alt `listen` lines below) — no marks lost for that substitution.
@@ -18,7 +18,7 @@ upstream app_backend {
 server {
     listen 80;
     # listen 8080;   # use this instead if 80 is blocked on your machine
-    server_name app.team1.test api.team1.test;
+    server_name app.cn_team.test api.cn_team.test;
     return 301 https://$host$request_uri;
 }
 
@@ -27,7 +27,7 @@ server {
     # listen 8443 ssl;   # use this instead if 443 is blocked on your machine
     http2 on;
 
-    server_name app.team1.test api.team1.test;
+    server_name app.cn_team.test api.cn_team.test;
 
     # Task E — TLS termination happens HERE, at the edge. Backends never see TLS.
     ssl_certificate     certs/fullchain.pem;

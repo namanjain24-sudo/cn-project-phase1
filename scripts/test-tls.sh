@@ -3,7 +3,7 @@
 # Run from any client machine.
 set -euo pipefail
 
-DOMAIN="${1:-app.team1.test}"
+DOMAIN="${1:-app.cn_team.test}"
 
 echo "== curl -v: shows the TLS handshake steps in the client's own log =="
 echo "   (look for 'TLSv1.3', 'Server certificate', 'SSL connection using...')"

@@ -4,13 +4,13 @@
 # Prefers mkcert (simplest — it creates a local CA and automatically trusts it on THIS
 # machine). Falls back to a plain OpenSSL self-signed cert if mkcert isn't available.
 #
-# Usage: ./generate-cert.sh app.team1.test api.team1.test
+# Usage: ./generate-cert.sh app.cn_team.test api.cn_team.test
 
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
   echo "Usage: $0 <domain1> [domain2] ..."
-  echo "Example: $0 app.team1.test api.team1.test"
+  echo "Example: $0 app.cn_team.test api.cn_team.test"
   exit 1
 fi
 

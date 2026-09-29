@@ -30,10 +30,10 @@ Then from this folder:
 ```bash
 cd mac2-edge
 chmod +x generate-cert.sh
-./generate-cert.sh app.team1.test api.team1.test
+./generate-cert.sh app.cn_team.test api.cn_team.test
 ```
 
-(Replace `team1.test` with your real domain.) This creates `certs/fullchain.pem` and
+(Replace `cn_team.test` with your real domain.) This creates `certs/fullchain.pem` and
 `certs/privkey.pem`. If `mkcert` isn't installed, the script automatically falls back to a
 plain OpenSSL self-signed cert instead — either is acceptable per the spec.
 
@@ -43,7 +43,7 @@ plain OpenSSL self-signed cert instead — either is acceptable per the spec.
 cp nginx.conf.template nginx.conf
 ```
 
-Edit `nginx.conf`: replace `team1.test`, `<MAC3_IP>`, `<MAC4_IP>` with your real values.
+Edit `nginx.conf`: replace `cn_team.test`, `<MAC3_IP>`, `<MAC4_IP>` with your real values.
 
 Homebrew's nginx auto-includes anything in its `servers/` folder, so drop your config there:
 ```bash
@@ -72,7 +72,7 @@ sudo nginx -s reload
 ## 5. Test locally on Mac 2 first
 
 ```bash
-curl -sI https://app.team1.test/ --resolve app.team1.test:443:127.0.0.1
+curl -sI https://app.cn_team.test/ --resolve app.cn_team.test:443:127.0.0.1
 ```
 
 (The `--resolve` flag fakes DNS locally so you can test before Mac 1's DNS is even involved.)
@@ -104,11 +104,11 @@ the same `security add-trusted-cert` command there, pointed at that file.
 
 Once DNS (Mac 1) is also pointed at your IP, from any client:
 ```bash
-for i in $(seq 1 6); do curl -s https://app.team1.test/api/status; echo; done
+for i in $(seq 1 6); do curl -s https://app.cn_team.test/api/status; echo; done
 ```
 You should see `"backend":"A"` and `"backend":"B"` alternating. Also check the header:
 ```bash
-curl -sI https://app.team1.test/api/status | grep -i x-backend
+curl -sI https://app.cn_team.test/api/status | grep -i x-backend
 ```
 
 ## Troubleshooting

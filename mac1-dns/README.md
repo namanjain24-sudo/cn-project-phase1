@@ -20,7 +20,7 @@ cp dnsmasq.conf.template dnsmasq.conf
 ```
 
 Edit `dnsmasq.conf` and replace:
-- `team1.test` → your real team domain
+- `cn_team.test` → your real team domain
 - `<MAC2_IP>` → Mac 2's actual LAN IP (the edge/nginx machine — DNS should point here, since
   clients connect to Mac 2, not directly to backends)
 - `<MAC1_IP>` → this machine's own LAN IP
@@ -55,8 +55,8 @@ sudo lsof -i :53
 ## 4. Test locally on Mac 1 first
 
 ```bash
-dig @127.0.0.1 app.team1.test
-dig @127.0.0.1 api.team1.test
+dig @127.0.0.1 app.cn_team.test
+dig @127.0.0.1 api.cn_team.test
 ```
 
 Both should return Mac 2's IP in the `ANSWER SECTION`. If this fails, dnsmasq isn't running
@@ -79,8 +79,8 @@ easy to restore afterwards.)
 ## 6. Verify from a client machine
 
 ```bash
-dig app.team1.test
-nslookup app.team1.test
+dig app.cn_team.test
+nslookup app.cn_team.test
 ```
 
 Should resolve to Mac 2's IP without needing `@127.0.0.1` — proving the client is actually
@@ -88,7 +88,7 @@ using your DNS server as its default resolver, not just querying it manually.
 
 ## 7. Never use raw IPs in the demo
 
-Once DNS works, always access the service as `https://app.team1.test/...` — never type Mac
+Once DNS works, always access the service as `https://app.cn_team.test/...` — never type Mac
 2's IP directly. Typing the IP defeats the entire point of this task.
 
 ## Troubleshooting

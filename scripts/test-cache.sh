@@ -3,7 +3,7 @@
 # Run from any client machine.
 set -euo pipefail
 
-DOMAIN="${1:-app.team1.test}"
+DOMAIN="${1:-app.cn_team.test}"
 URL="https://$DOMAIN/api/data"
 
 echo "== First request: full 200 with Cache-Control + ETag =="

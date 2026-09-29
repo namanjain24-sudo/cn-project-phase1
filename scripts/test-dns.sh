@@ -2,8 +2,8 @@
 # Run from any client machine once Mac 1 (DNS) is set up.
 set -euo pipefail
 
-DOMAIN_APP="${1:-app.team1.test}"
-DOMAIN_API="${2:-api.team1.test}"
+DOMAIN_APP="${1:-app.cn_team.test}"
+DOMAIN_API="${2:-api.cn_team.test}"
 
 echo "== dig $DOMAIN_APP =="
 dig "$DOMAIN_APP" +short
