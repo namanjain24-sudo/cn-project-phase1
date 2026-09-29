@@ -1,0 +1,50 @@
+# nginx config for the edge / reverse proxy / load balancer (Mac 2) — Tasks D + E
+#
+# Copy this to your real nginx config location and rename without ".template".
+# Replace placeholders: team1.test, <MAC3_IP>, <MAC4_IP>.
+#
+# If your machine won't let you bind to 80/443, use the 8080/8443 versions instead
+# (see the commented alt `listen` lines below) — no marks lost for that substitution.
+
+# Task D — upstream pool: round-robin across both backends by default (no extra directive
+# needed for round-robin; add `least_conn;` as the first line inside upstream{} if you want
+# that strategy instead, and say so in your report).
+upstream app_backend {
+    server <MAC3_IP>:3001;   # Backend A
+    server <MAC4_IP>:3002;   # Backend B
+}
+
+# Redirect plain HTTP to HTTPS
+server {
+    listen 80;
+    # listen 8080;   # use this instead if 80 is blocked on your machine
+    server_name app.team1.test api.team1.test;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    # listen 8443 ssl;   # use this instead if 443 is blocked on your machine
+    http2 on;
+
+    server_name app.team1.test api.team1.test;
+
+    # Task E — TLS termination happens HERE, at the edge. Backends never see TLS.
+    ssl_certificate     certs/fullchain.pem;
+    ssl_certificate_key certs/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://app_backend;
+
+        # Pass through the original host/client info (standard reverse-proxy hygiene)
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # If a backend is completely unreachable, try the next one before giving up
+        # (this is what makes "one backend stopped" transparent to the client — §6.3 #3)
+        proxy_next_upstream error timeout invalid_header http_502 http_503 http_504;
+    }
+}

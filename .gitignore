@@ -1,0 +1,17 @@
+# OS junk
+.DS_Store
+
+# Generated TLS material — regenerate per machine with mac2-edge/generate-cert.sh,
+# don't commit private keys
+mac2-edge/certs/
+
+# Node (no dependencies in this project, but just in case someone adds any)
+node_modules/
+
+# Editor
+.vscode/
+.idea/
+
+# NOTE: mac1-dns/dnsmasq.conf and mac2-edge/nginx.conf (your real, filled-in configs) are
+# intentionally NOT ignored — the spec's "Configuration Bundle" deliverable requires your
+# actual working configs to be committed, not just the .template versions.
