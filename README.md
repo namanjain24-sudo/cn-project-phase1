@@ -106,16 +106,17 @@ CN_project/
 
 ## 6. Getting this into GitHub (do this once, as the team lead)
 
+This folder is already its own local git repo with one commit (the Phase 1 scaffold). You
+just need to create the GitHub repo and push:
+
 ```bash
 cd /Users/naman./Desktop/CN_project
-git init
-git add .
-git commit -m "Phase 1 scaffold: DNS, edge/LB/TLS, two backends, docs"
 gh repo create <your-repo-name> --private --source=. --remote=origin
 git push -u origin main
 ```
 
-If you don't have `gh` (GitHub CLI): create an empty repo on github.com first, then:
+If you don't have `gh` (GitHub CLI): create an empty repo on github.com first (**don't**
+initialize it with a README/license — this folder already has one), then:
 
 ```bash
 git remote add origin https://github.com/<your-username>/<your-repo-name>.git
