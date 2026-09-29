@@ -1,0 +1,18 @@
+=== Mac 1 (DNS server) — Person A: Naman ===
+Machine IP: 10.7.21.117
+
+$ /opt/homebrew/bin/brew install dnsmasq
+(installed successfully — dnsmasq 2.93 at /opt/homebrew/Cellar/dnsmasq/2.93)
+
+$ cat /opt/homebrew/etc/dnsmasq.conf
+address=/app.cn_team.test/10.7.21.117   [TEMP: will change to Mac 2's IP once Harsha joins]
+address=/api.cn_team.test/10.7.21.117   [TEMP: will change to Mac 2's IP once Harsha joins]
+listen-address=127.0.0.1,10.7.21.117
+bind-interfaces
+port=53
+server=8.8.8.8
+server=1.1.1.1
+log-queries
+
+$ /opt/homebrew/opt/dnsmasq/sbin/dnsmasq --test -C /opt/homebrew/etc/dnsmasq.conf
+dnsmasq: syntax check OK.
