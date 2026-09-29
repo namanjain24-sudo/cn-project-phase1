@@ -32,6 +32,15 @@ folder structure and don't dump everything loose into one folder.
   HTTPS (443 or 8443/TCP)
 - [ ] All 5 failure-demo scenarios from `docs/failure-demos.md` documented
 
+## The actual submission: a video, not a live viva
+
+For this course, there is no live Phase 1 demo/viva — the evidence above feeds into a
+**recorded video** instead. See `docs/video-script.md` for the shot list, talking points, and
+recording checklist. Everything in this file is prep material for that recording, not a
+separate deliverable to hand in on its own (though keeping the raw evidence files in this
+folder is still worth doing — it's what you're narrating over in the video, and useful if
+anyone asks follow-up questions later).
+
 ## Other Phase 1 deliverables (Section 9)
 
 - [ ] **Architecture Document** — `docs/topology.md` (topology + IP table) +

@@ -36,9 +36,10 @@ the updated repo.
 Request flow: `Client → DNS query (Mac 1) → HTTPS (Mac 2 / nginx) → Backend A (Mac 3) or Backend B (Mac 4)`
 
 **Everyone should clone the whole repo**, but each person's daily work lives in their own
-folder. `docs/` and `scripts/` are shared — read them together as a team before the demo,
-because the individual viva (10 marks) tests whether you understand the *whole* system, not
-just your own machine.
+folder. `docs/` and `scripts/` are shared — read them together as a team before recording,
+because the video is graded on whether you understand the *whole* system, not just your own
+machine — see §7 below, **there's no live viva for Phase 1, the deliverable is a recorded
+video**, and each person needs to speak on camera about their own part.
 
 ## 2. Order of operations (do these in sequence, as a team)
 
@@ -56,11 +57,24 @@ You need all 4 laptops on the same Wi-Fi/LAN before any of this works.
    [`scripts/test-cache.sh`](scripts/test-cache.sh)).
 6. **Task G — Capture everything in Wireshark** — see [`docs/evidence-checklist.md`](docs/evidence-checklist.md).
 7. **Failure demos (§6.3)** — see [`docs/failure-demos.md`](docs/failure-demos.md).
+8. **Record the video** — see [`docs/video-script.md`](docs/video-script.md). This is the
+   actual Phase 1 submission for this course (no live viva) — everything above is prep for
+   this recording.
 
 Realistic dependency order: **Mac 1 (partial DNS record for Mac 2) → Mac 3 & Mac 4 in
 parallel → Mac 2 (needs Mac 3/4 IPs) → Mac 1 (finish DNS pointing at Mac 2) → everyone tests.**
 
-## 3. What "done" looks like (Phase 1 gate)
+## 3. Submission format: video, not live viva
+
+This course's Phase 1 evaluation is a **recorded video walkthrough** — there's no live
+demo/viva session. That means the video has to carry the weight the viva normally would:
+every person must appear on camera and narrate their own component (not just silently type
+commands), and you need to actually explain *why* things work, not just show that they do.
+Full shot-list and script: [`docs/video-script.md`](docs/video-script.md). Read the general
+spec's marks breakdown in §5 below as "what this video needs to prove," not as a literal live
+grading session.
+
+## 4. What "done" looks like (Phase 1 gate)
 
 From the spec: *Phase 1 is complete when a client resolves `app.teamX.test`, connects over
 HTTPS, and receives responses from both backends through the load balancer.*
@@ -75,16 +89,17 @@ for i in $(seq 1 6); do curl -s https://app.team7.test/api/status; echo; done
 # ^ should alternate "backend":"A" and "backend":"B"
 ```
 
-## 4. Repo layout
+## 5. Repo layout
 
 ```
 CN_project/
 ├── README.md                  ← you are here
 ├── docs/
 │   ├── topology.md            ← Task A: IP inventory + topology diagram template
-│   ├── protocol-flow.md       ← OSI/TCP-IP mapping, TLS handshake, viva prep notes
+│   ├── protocol-flow.md       ← OSI/TCP-IP mapping, TLS handshake, talking-point notes
 │   ├── failure-demos.md       ← §6.3 mandatory failure scenarios, exact commands
-│   └── evidence-checklist.md  ← Task G + Section 9 deliverables checklist
+│   ├── evidence-checklist.md  ← Task G + Section 9 deliverables checklist
+│   └── video-script.md        ← Phase 1 video shot-list & script (the actual submission)
 ├── mac1-dns/                  ← Person A: dnsmasq config + setup commands
 ├── mac2-edge/                 ← Person B: nginx config, TLS cert script, setup commands
 ├── mac3-backend-a/            ← Person C: backend A source + setup commands
@@ -93,7 +108,11 @@ CN_project/
 └── evidence/                  ← screenshots, curl output, Wireshark captures go here
 ```
 
-## 5. Marks this repo is aimed at (Review 1, Phase 1 — 50 marks)
+## 6. Marks this repo is aimed at (Review 1, Phase 1 — 50 marks per the general spec)
+
+The spec below assumes a live viva; for this course, the "Individual viva" row is instead
+graded from how well each person explains their part **in the video** (see
+`docs/video-script.md`).
 
 | Area | Marks | Covered by |
 |---|---|---|
@@ -102,9 +121,9 @@ CN_project/
 | HTTPS/TLS (Task E) | 8 | `mac2-edge/`, `docs/protocol-flow.md` |
 | Packet Analysis (Task G) | 7 | `docs/evidence-checklist.md` |
 | HTTP Caching (Task F) | 5 | backend `/api/data` endpoint, `scripts/test-cache.sh` |
-| Individual viva | 10 | know the *whole* system — read every README, not just your own |
+| Individual understanding | 10 | shown via each person's narration in the video, not a live viva |
 
-## 6. Getting this into GitHub (do this once, as the team lead)
+## 7. Getting this into GitHub (do this once, as the team lead)
 
 This folder is already its own local git repo with one commit (the Phase 1 scaffold). You
 just need to create the GitHub repo and push:
