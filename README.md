@@ -124,12 +124,13 @@ git branch -M main
 git push -u origin main
 ```
 
-Then add your 3 teammates as collaborators (Settings → Collaborators on GitHub), and each of
-them runs:
+**This repo is already live and pushed:** https://github.com/namanjain24-sudo/cn-project-phase1
+(private). Add your 3 teammates as collaborators: Settings → Collaborators on that repo page.
+Each of them then runs:
 
 ```bash
-git clone https://github.com/<your-username>/<your-repo-name>.git
-cd <your-repo-name>
+git clone https://github.com/namanjain24-sudo/cn-project-phase1.git
+cd cn-project-phase1
 ```
 
 Everyone should `git pull` before starting work each session, and commit+push their own
