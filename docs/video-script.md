@@ -137,11 +137,13 @@ the result, explain why in your own words, then fix it. Recommended picks:
 
 **Naman — wrong DNS server on a client:**
 ```bash
-networksetup -getdnsservers Wi-Fi          # note the current value first
+networksetup -getdnsservers Wi-Fi          # note the current value first (for Naman's Mac
+                                            # right now this says "There aren't any DNS
+                                            # Servers set" — i.e. automatic/DHCP)
 sudo networksetup -setdnsservers Wi-Fi 8.8.8.8
 dig app.cn_team.test                        # SAY: fails / no answer
 ping 10.7.11.169                            # SAY: but this still works!
-sudo networksetup -setdnsservers Wi-Fi 10.7.21.117   # restore
+sudo networksetup -setdnsservers Wi-Fi empty   # restore to automatic (what it was before)
 ```
 **SAY:** "DNS failed, but direct IP connectivity still works — this proves DNS and IP
 reachability are independent layers."
