@@ -1,0 +1,15 @@
+=== Mac 1 IP changed mid-setup (hotspot reassigned 10.7.21.117 -> 10.7.6.95) ===
+=== Fixed dnsmasq.conf listen-address, restarted, re-verified ===
+
+$ sudo brew services restart dnsmasq
+==> Successfully stopped `dnsmasq` (label: sh.brew.dnsmasq)
+==> Successfully started `dnsmasq` (label: sh.brew.dnsmasq)
+
+$ dig @127.0.0.1 app.cn_team.test +short
+10.7.11.169
+
+$ dig @10.7.6.95 app.cn_team.test +short
+10.7.11.169
+
+Confirms dnsmasq is correctly bound and resolving on the machine's new current IP, not just
+localhost -- other client machines can now reach it at 10.7.6.95.
