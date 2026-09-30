@@ -1,0 +1,36 @@
+=== Task G: Complete Protocol Flow Capture ===
+=== Captured by Hemanth (Mac 3, 10.7.12.33) against Harsha's edge (Mac 2, 10.7.11.169) ===
+=== Filter used: ip.addr==10.7.11.169 and tcp.port==443 ===
+
+DNS (captured separately, filter "dns"):
+  #735  10.7.12.33 -> 10.7.6.95   Standard query A app.cn_team.test
+  #747  10.7.6.95  -> 10.7.12.33  Standard query response A app.cn_team.test A 10.7.11.169
+  (client ephemeral source port, server well-known port 53/UDP)
+
+TCP three-way handshake:
+  #752  10.7.12.33:49358 -> 10.7.11.169:443  [SYN]     Seq=0
+  #758  10.7.11.169:443  -> 10.7.12.33:49358 [SYN,ACK] Seq=0 Ack=1
+  #759  10.7.12.33:49358 -> 10.7.11.169:443  [ACK]     Ack=1
+  (client ephemeral source port 49358, server well-known destination port 443/TCP)
+
+TLS handshake:
+  #760  Client Hello (SNI=app.cn_team.test)   -- client proposes cipher suites, sends SNI
+  #763  Server Hello, Change Cipher Spec, Application Data  -- server responds, picks cipher
+  #764  Application Data (further handshake completion, TLS 1.3 style)
+
+Encrypted application data (HTTP request/response is inside here):
+  #765 onward -- repeated "Application Data" TLSv1.x packets in both directions.
+  No readable HTTP headers or JSON body are visible -- this is the direct evidence that TLS
+  is encrypting the payload. Only the TCP/TLS metadata (ports, sequence numbers, record types)
+  is visible in plaintext.
+
+Connection teardown:
+  #800  10.7.12.33:49358  -> 10.7.11.169:443  [FIN, ACK]
+  #801  10.7.11.169:443   -> 10.7.12.33:49358 [ACK]
+  #803  10.7.11.169:443   -> 10.7.12.33:49358 [RST, ACK]  (curl closing abruptly, normal)
+
+This single capture demonstrates every row of the spec's Task G table: DNS query/response,
+TCP handshake with ports identified, TLS handshake (ClientHello/ServerHello/ChangeCipherSpec),
+and encrypted Application Data proving the payload is not readable in plaintext.
+
+Raw .pcapng file and full-resolution screenshots to be added alongside this file.
