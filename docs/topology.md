@@ -31,21 +31,20 @@ networksetup -getinfo Wi-Fi
 Fill this in as a team (this table **is** your Architecture Document's IP/service table —
 keep it in this file and commit it):
 
-| Machine | Person | Role | IPv4 Address | Subnet Mask/Prefix | Gateway | Interface | MAC Address |
+| Machine | Person | Role | IPv4 Address | Subnet Mask | Gateway | Interface | MAC Address |
 |---|---|---|---|---|---|---|---|
-| Mac 1 | Naman | DNS Server | 10.7.21.117 | (fill in) | (fill in) | en0 | (fill in) |
-| Mac 2 | Harsha Karthikeya | Edge/LB/TLS | 10.7.11.169 | (fill in) | (fill in) | en0 | (fill in) |
-| Mac 3 | Hemanth | Backend A | 10.7.12.33 | (fill in) | (fill in) | en0 | (fill in) |
-| Mac 4 | Akshay | Backend B + Client | 10.7.1.139 | (fill in) | (fill in) | en0 | (fill in) |
+| Mac 1 | Naman | DNS Server | 10.7.6.95 | 255.255.224.0 | 10.7.0.1 | en0 | ea:13:1a:a7:22:15 |
+| Mac 2 | Harsha Karthikeya | Edge/LB/TLS | 10.7.11.169 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c2:fb:bc |
+| Mac 3 | Hemanth | Backend A | 10.7.12.33 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c1:92:86 |
+| Mac 4 | Akshay | Backend B + Client | 10.7.1.139 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:bd:67:24 |
 
-IPs confirmed via ping between all 4 machines on 2026-09-30. Note: this looks like a shared
-mobile hotspot (high ping latency observed, 200–1500ms) rather than a router — expect some
-flakiness/reconnects during the demo; if a machine's IP changes after a reconnect, re-run
-`ipconfig getifaddr en0` on that machine and update this table + the relevant configs
-(`mac1-dns/dnsmasq.conf` and `mac2-edge/nginx.conf`) again.
-
-Subnet mask, gateway, and MAC address columns above are still blank — each person should run
-the commands in step 2 above on their own machine and fill in their own row.
+Full table confirmed by the team, last updated 2026-09-30. This is a shared mobile hotspot
+(255.255.224.0 = a /19, and high ping latency was observed earlier, 200–1500ms) rather than a
+router — **IPs can and did change after a reconnect** (Mac 1's IP changed once already during
+setup). If a machine's IP changes again, re-run `ipconfig getifaddr en0` on that machine,
+update this table, and update whichever config references that IP
+(`mac1-dns/dnsmasq.conf`'s `listen-address`, or `mac2-edge/nginx.conf`'s `upstream` block if
+Mac 3/4's IP changes) — then restart the relevant service.
 
 Get the MAC address from `ifconfig en0 | grep ether`.
 
