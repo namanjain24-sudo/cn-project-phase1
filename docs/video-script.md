@@ -1,120 +1,189 @@
-# Phase 1 Video Submission — Shot List & Script
+# Phase 1 Video Submission — Shot List & Script (with exact commands)
 
-**This course's Phase 1 deliverable is a recorded video, not a live viva.** That changes one
-thing in practice: since no evaluator can stop you and ask a question in person, the video
-itself has to do the job the viva would have done — so **every person must speak on camera
-and explain their own component in their own words**, not just show a terminal silently
-working. Assume the person grading this is watching for two things: (1) does the system
-actually work end-to-end, (2) can each teammate clearly explain the part they built. Both
-need to be visible in the recording.
+**This course's Phase 1 deliverable is a recorded video, not a live viva.** That means the
+video itself has to do the job the viva would have done — so **every person must speak on
+camera and explain their own component in their own words**, not just show a terminal
+silently working. Copy-paste the commands below exactly, but say the "SAY THIS" lines in your
+own words, not word-for-word — sounding like you're reading a script is worse than sounding a
+bit rough but genuine.
 
 ## Before you record
 
-- **Tool:** QuickTime Player (free, built into macOS) → File → New Screen Recording. Or OBS
-  if you want to combine multiple machines' screens into one view.
-- **Audio:** use a real mic if possible (AirPods are fine) — muffled laptop-mic narration
-  over a terminal demo is the single biggest way these videos lose marks for clarity.
-- **Terminal setup:** bump your terminal font size up (`Cmd +` a few times) before recording
-  — small monospace text is unreadable on a compressed video export.
-- **Do a full dry run first** without recording. Confirm DNS, TLS, load balancing, and
-  caching all actually work before you hit record — don't debug live on camera.
-- **Length:** aim for 10–15 minutes total. Long enough to show everything in the checklist
-  below, short enough that nobody's watching you type for 3 minutes in silence.
+- **Tool:** QuickTime Player (already on every Mac) → File → New Screen Recording → red
+  record button → pick your screen → click to start.
+- **Audio:** speak clearly, close to the mic. Test one 10-second recording first and play it
+  back before doing the real take.
+- **Terminal font size:** bump it up first (`Cmd +` a few times) — small text is unreadable
+  once the video is compressed.
+- **Do a silent dry run of your commands first**, without recording, so you're not debugging
+  live on camera.
+- Each person records their own clip separately, on their own machine. They get combined into
+  one final video afterward (iMovie, or ask if you want help stitching them).
 
-## Recording approach: 4 short screen recordings, then stitch
-
-Each person records their own screen (their own machine, their own voice) doing their own
-task. Combine the 4 clips in order afterward (iMovie, or even just `ffmpeg -f concat`) into
-one final video. This is much easier logistically than trying to get 4 laptops in frame at
-once, and it naturally makes sure everyone actually appears and explains their own part.
+Wherever a command below has `<...>` in it, replace it with the real value from
+[`docs/topology.md`](topology.md) (everyone's current IP).
 
 ---
 
-## Scene 1 — Topology & LAN (whoever wants to open — 1–2 min)
+## Scene 1 — Topology & LAN (Naman — 1–2 min)
 
-Maps to Demo Steps 1–2 in the spec.
+**SHOW:** the topology diagram from `docs/topology.md` (open the file, or redraw it on paper/
+a slide first — up to you) and the filled-in IP table.
 
-- Show the topology diagram (`docs/topology.md`, redrawn nicely) on screen, narrate the 4
-  roles and the request flow in one sentence each.
-- Show the filled-in IP table.
-- Run `ping` between a couple of machine pairs on screen, narrate: "this proves all 4 Macs
-  are reachable on the same LAN before anything else can work."
+**SAY:** "This is our network — 4 laptops, 4 roles. Mac 1 is DNS, Mac 2 is the edge/load
+balancer with HTTPS, Mac 3 and Mac 4 are the two backend servers. A client asks Mac 1 for the
+address, then talks to Mac 2, which forwards to Mac 3 or Mac 4."
 
-## Scene 2 — DNS resolution (Person A, Mac 1 — 2 min)
+**RUN THIS on screen** (proves all 4 machines can reach each other):
+```bash
+ping -c 4 10.7.11.169   # Harsha's Mac
+ping -c 4 10.7.12.33    # Hemanth's Mac
+ping -c 4 10.7.1.139    # Akshay's Mac
+```
+**SAY:** "This proves all 4 machines are on the same network before anything else can work."
 
-Maps to Demo Step 3.
+---
 
-- On camera: "I'm running dnsmasq, our team's private DNS server, on this machine."
-- Show `dnsmasq.conf` briefly (the `address=` lines).
-- Run `dig app.teamX.test` from a **client** machine (not Mac 1 itself) — narrate: "this
-  resolves to Mac 2's IP, `<ip>`, using our own DNS server, not a public one."
-- One sentence distinguishing DNS resolution from the connection that follows it (this is
-  explicitly called out in the spec as something you should be able to explain).
+## Scene 2 — DNS resolution (Naman — 2 min)
 
-## Scene 3 — HTTPS, TLS, and load balancing (Person B, Mac 2 — 3–4 min)
+**SAY:** "I'm running dnsmasq, our team's private DNS server, on this machine — this is the
+same role AWS Route 53 plays in the cloud."
 
-Maps to Demo Steps 4–5.
+**RUN THIS:**
+```bash
+cat /opt/homebrew/etc/dnsmasq.conf
+```
+**SAY (while pointing at the `address=` lines):** "This record says `app.cn_team.test` should
+resolve to Mac 2's IP address — that's Harsha's machine, the edge server."
 
-- "I run nginx as the single entry point — clients never talk to the backends directly."
-- Open `https://app.teamX.test/` in a browser on camera — **point at the padlock, no
-  warning**. Say out loud: "no `-k` flag, no bypassed certificate — this is a properly
-  trusted TLS connection."
-- Run `../scripts/test-lb.sh` (or manual repeated `curl`s) — narrate as `X-Backend: A` and
-  `X-Backend: B` alternate: "this proves nginx is round-robining across both backends, and
-  the client never needs to know either backend's IP."
-- Briefly narrate the TLS handshake steps from memory (ClientHello → ServerHello →
-  Certificate → Key Exchange → Finished) — this is the single most-asked-about concept, make
-  sure whoever owns Mac 2 can say this without reading it off screen.
+**RUN THIS:**
+```bash
+dig app.cn_team.test
+```
+**SAY (pointing at the ANSWER SECTION):** "This proves the name resolves to Mac 2's IP using
+our own DNS server, not a public one like Google's. DNS only translates the name to an IP —
+it doesn't open any connection by itself, that happens in the next step."
 
-## Scene 4 — Backends, caching, and packet evidence (Person C + Person D — 3–4 min)
+---
 
-Maps to Demo Steps 6–7, plus Task F.
+## Scene 3 — HTTPS, TLS, and load balancing (Harsha — 3–4 min)
 
-- Person C or D: "here's our backend code — deliberately simple, a REST API with two
-  endpoints and a caching demo." Show `server.js` briefly, point at the `X-Backend` header
-  and the `/api/data` cache logic.
-- Run `../scripts/test-cache.sh` on camera — narrate the difference between the first
-  request (200, fresh) and the second (304, conditional, no body).
-- Open the saved Wireshark capture (`evidence/tcp-tls-handshake/`) — narrate, pointing at:
-  the DNS query/response, the TCP SYN/SYN-ACK/ACK, the TLS handshake messages, and finally
-  the encrypted `Application Data` packets. Say explicitly: **"you can see the handshake
-  happened, but you cannot read the HTTP headers here — that's TLS doing its job."**
+**SAY:** "I run nginx — the single entry point for the whole system. Clients never talk to
+the backend servers directly, only to me."
+
+**RUN THIS** (open in a browser, or run this in terminal):
+```bash
+curl -vI https://app.cn_team.test/
+```
+**SAY (point at the terminal or the browser padlock):** "No `-k` flag, no certificate
+warning — this is a properly trusted TLS connection, not a bypassed one."
+
+**RUN THIS** (from this repo's `scripts/` folder, on any client machine):
+```bash
+cd scripts
+./test-lb.sh
+```
+**SAY (as A and B alternate on screen):** "This proves nginx is round-robin load balancing
+across both backend servers — the client never needs to know either backend's IP address."
+
+**SAY (from memory, no notes — this is the single most commonly asked question):** "The TLS
+handshake goes: ClientHello, where the client proposes what encryption it supports; ServerHello,
+where I pick one; Certificate, where I send my cert and the client checks it's trusted; Key
+Exchange, where we agree on a shared secret; then Finished — after that, everything is
+encrypted."
+
+---
+
+## Scene 4 — Backends, caching, and packet evidence (Hemanth + Akshay — 3–4 min)
+
+**Hemanth or Akshay, SAY:** "Here's our backend code — deliberately simple, just a REST API
+with two endpoints, since the network is what's being graded, not the app."
+
+**RUN THIS** (from your own backend folder, e.g. `mac3-backend-a` or `mac4-backend-b`):
+```bash
+cat server.js
+```
+**SAY (point at the `X-Backend` header and the `/api/data` route):** "Every response carries
+an `X-Backend` header so we can see which server answered. This one endpoint also supports
+caching."
+
+**RUN THIS** (from `scripts/`):
+```bash
+./test-cache.sh
+```
+**SAY (as the output scrolls):** "The first request is a fresh 200 with a `Cache-Control`
+header and an ETag. The second request sends that ETag back with `If-None-Match`, and the
+server replies `304 Not Modified` with no body — that's a conditional request, saving
+bandwidth because the content hasn't changed."
+
+**Then, whoever captured the Wireshark trace, RUN/SHOW THIS** (open the saved capture file
+from `evidence/tcp-tls-handshake/`):
+- Point at the DNS query and response packet.
+- Point at the TCP SYN → SYN-ACK → ACK sequence.
+- Point at the TLS ClientHello → ServerHello → Certificate → Finished messages.
+- Point at the `Application Data` packets that follow.
+
+**SAY:** "You can see the handshake happened step by step, but from here on you cannot read
+the actual HTTP headers or content in the capture — that's TLS doing its job. The connection
+is proven, but the data inside it is encrypted."
+
+---
 
 ## Scene 5 — Failure demos (split across whoever owns each layer — 3–4 min)
 
-Maps to §6.3 — this is where "explain your reasoning, not just that it worked" matters most.
-Pick at least 3 of the 5 scenarios in `docs/failure-demos.md` to actually show on camera (all
-5 if you have time); for each one, the pattern is the same:
+Full details and exact commands for all 5 scenarios: [`docs/failure-demos.md`](failure-demos.md).
+Pick at least 3 to show on camera. For each: say what you're breaking and why, break it, show
+the result, explain why in your own words, then fix it. Recommended picks:
 
-1. State what you're about to break and why (which layer it tests).
-2. Break it on screen.
-3. Show the resulting behavior (`dig`, `curl`, `ping` output).
-4. Say **in your own words** why that happened — this is literally graded on methodology,
-   not on things going wrong being scary. A calm, correct explanation of a "failure" is worth
-   more than a silent success.
-5. Undo it, confirm the system is healthy again, move on.
+**Naman — wrong DNS server on a client:**
+```bash
+networksetup -getdnsservers Wi-Fi          # note the current value first
+sudo networksetup -setdnsservers Wi-Fi 8.8.8.8
+dig app.cn_team.test                        # SAY: fails / no answer
+ping 10.7.11.169                            # SAY: but this still works!
+sudo networksetup -setdnsservers Wi-Fi 10.7.21.117   # restore
+```
+**SAY:** "DNS failed, but direct IP connectivity still works — this proves DNS and IP
+reachability are independent layers."
 
-Strongly recommend including scenario #4 (both backends down → 502) since it's the cleanest
-one-sentence demonstration of "DNS worked, TLS worked, only the app layer failed."
+**Hemanth or Akshay — one backend stopped:**
+```bash
+# On Mac 3 (or Mac 4), stop the server: Ctrl+C in its terminal, or:
+lsof -ti:3001 | xargs kill      # (use :3002 on Mac 4)
+```
+Then, from a client:
+```bash
+cd scripts && ./test-lb.sh
+```
+**SAY:** "Now only one backend answers — nginx quietly routed around the dead one, the client
+never saw an error." Then restart the server (`node server.js`) to fix it.
+
+**Harsha — both backends stopped:**
+```bash
+# after both Mac 3 and Mac 4 servers are stopped
+curl -v https://app.cn_team.test/api/status
+```
+**SAY:** "DNS still resolved, TLS still handshaked fine — but now we get a 502 Bad Gateway.
+This proves exactly where the edge ends and the application layer begins." Then have Hemanth/
+Akshay restart their servers.
+
+---
 
 ## Scene 6 — Wrap-up (whoever, 30 sec)
 
-- One sentence recap of the full request path, DNS → TCP → TLS → HTTP → load balancer →
-  backend.
-- State clearly this is Phase 1 only, and what Phase 2 will add (resilience/failover) — shows
-  the evaluator you understand this is a staged build, not that you forgot something.
+**SAY:** "To recap: a request goes DNS, then TCP, then TLS, then HTTP, then the load balancer
+picks a backend. This was Phase 1 — Build and Observe. Phase 2 will add resilience: backup
+DNS, failover, and firewall isolation between the edge and the backends."
 
 ---
 
 ## Checklist before you export/submit
 
-- [ ] Every one of the 4 people speaks on camera and explains at least their own component
+- [ ] All 4 people speak on camera and explain their own component
 - [ ] No `-k` / cert-bypass flags visible anywhere in the final cut
 - [ ] X-Backend alternating shown clearly (A and B both visible)
 - [ ] Wireshark capture shown with DNS + TCP handshake + TLS handshake pointed out
 - [ ] Caching 200 → 304 shown
 - [ ] At least 3 of the 5 failure scenarios shown, each with a spoken explanation
-- [ ] Video is under whatever length limit your faculty gave you (check the assignment
-  portal/instructions — the spec PDF doesn't state one, so confirm separately)
-- [ ] Export and also keep the raw screen recordings + this video in `evidence/` or wherever
-  your faculty wants it submitted (Drive link, LMS upload, etc.)
+- [ ] Check your faculty's length limit (not stated in the spec PDF — confirm separately)
+- [ ] Keep the raw clips + final video somewhere safe (Drive/LMS) in addition to submitting
