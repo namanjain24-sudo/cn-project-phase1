@@ -33,10 +33,19 @@ keep it in this file and commit it):
 
 | Machine | Person | Role | IPv4 Address | Subnet Mask/Prefix | Gateway | Interface | MAC Address |
 |---|---|---|---|---|---|---|---|
-| Mac 1 | | DNS Server | | | | | |
-| Mac 2 | | Edge/LB/TLS | | | | | |
-| Mac 3 | | Backend A | | | | | |
-| Mac 4 | | Backend B + Client | | | | | |
+| Mac 1 | Naman | DNS Server | 10.7.21.117 | (fill in) | (fill in) | en0 | (fill in) |
+| Mac 2 | Harsha Karthikeya | Edge/LB/TLS | 10.7.11.169 | (fill in) | (fill in) | en0 | (fill in) |
+| Mac 3 | Hemanth | Backend A | 10.7.12.33 | (fill in) | (fill in) | en0 | (fill in) |
+| Mac 4 | Akshay | Backend B + Client | 10.7.1.139 | (fill in) | (fill in) | en0 | (fill in) |
+
+IPs confirmed via ping between all 4 machines on 2026-09-30. Note: this looks like a shared
+mobile hotspot (high ping latency observed, 200–1500ms) rather than a router — expect some
+flakiness/reconnects during the demo; if a machine's IP changes after a reconnect, re-run
+`ipconfig getifaddr en0` on that machine and update this table + the relevant configs
+(`mac1-dns/dnsmasq.conf` and `mac2-edge/nginx.conf`) again.
+
+Subnet mask, gateway, and MAC address columns above are still blank — each person should run
+the commands in step 2 above on their own machine and fill in their own row.
 
 Get the MAC address from `ifconfig en0 | grep ether`.
 
