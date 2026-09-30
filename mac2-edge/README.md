@@ -34,16 +34,23 @@ chmod +x generate-cert.sh
 ```
 
 (Replace `cn_team.test` with your real domain.) This creates `certs/fullchain.pem` and
-`certs/privkey.pem`. If `mkcert` isn't installed, the script automatically falls back to a
-plain OpenSSL self-signed cert instead — either is acceptable per the spec.
+`certs/privkey.pem` **inside `mac2-edge/`**. If `mkcert` isn't installed, the script
+automatically falls back to a plain OpenSSL self-signed cert instead — either is acceptable
+per the spec.
+
+**Important — copy the certs to where nginx actually looks for them.** `nginx.conf`
+references the certs with an absolute path, `/opt/homebrew/etc/nginx/certs/`, because nginx
+resolves relative paths against its own config directory, not against `mac2-edge/`:
+```bash
+sudo mkdir -p /opt/homebrew/etc/nginx/certs
+sudo cp certs/* /opt/homebrew/etc/nginx/certs/
+```
 
 ## 3. Install the config
 
-```bash
-cp nginx.conf.template nginx.conf
-```
-
-Edit `nginx.conf`: replace `cn_team.test`, `<MAC3_IP>`, `<MAC4_IP>` with your real values.
+`nginx.conf` in this folder is already filled in with the real backend IPs — no editing
+needed. (If the IPs in `docs/topology.md` ever change, re-copy from `nginx.conf.template`
+and fill in the new values instead.)
 
 Homebrew's nginx auto-includes anything in its `servers/` folder, so drop your config there:
 ```bash
@@ -115,6 +122,9 @@ curl -sI https://app.cn_team.test/api/status | grep -i x-backend
 
 - **`nginx: [emerg] bind() to 0.0.0.0:443 failed (13: Permission denied)`** — you forgot
   `sudo`, or use the 8080/8443 fallback instead.
+- **`nginx: [emerg] cannot load certificate ".../certs/fullchain.pem": ... No such file or
+  directory`** — the certs are still sitting in `mac2-edge/certs/` and haven't been copied to
+  `/opt/homebrew/etc/nginx/certs/` yet (step 2 above).
 - **502 Bad Gateway** — nginx can't reach a backend. Check Mac 3/Mac 4 are actually running
   (`curl http://<MAC3_IP>:3001/` from Mac 2 directly) and that the IPs in `nginx.conf` are
   correct and current (LAN IPs can change if a laptop reconnects to Wi-Fi).

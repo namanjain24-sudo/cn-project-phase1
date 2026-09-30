@@ -30,8 +30,11 @@ server {
     server_name app.cn_team.test api.cn_team.test;
 
     # Task E — TLS termination happens HERE, at the edge. Backends never see TLS.
-    ssl_certificate     certs/fullchain.pem;
-    ssl_certificate_key certs/privkey.pem;
+    # NOTE: nginx resolves relative paths against ITS OWN config directory
+    # (/opt/homebrew/etc/nginx/), not against mac2-edge/ — so these must be absolute,
+    # and the cert files must be copied to /opt/homebrew/etc/nginx/certs/ (see README step 6).
+    ssl_certificate     /opt/homebrew/etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /opt/homebrew/etc/nginx/certs/privkey.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
 
     location / {
