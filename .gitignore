@@ -5,6 +5,12 @@
 # don't commit private keys
 mac2-edge/certs/
 
+# Safety net: NEVER commit any private key file, anywhere in the repo, under any name.
+# (mac2-edge/rootCA.pem -- the CA's PUBLIC cert -- is fine and SHOULD be committed so
+# every client machine can trust it; only *-key.pem files are the sensitive ones.)
+*-key.pem
+*.key
+
 # Node (no dependencies in this project, but just in case someone adds any)
 node_modules/
 
