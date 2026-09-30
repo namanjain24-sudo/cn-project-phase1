@@ -1,4 +1,4 @@
-=== A client machine confirmed using Mac 1 (10.7.6.95) as its DNS resolver ===
+=== Akshay's machine (Mac 4, 10.7.1.139) confirmed using Mac 1 (10.7.6.95) as its DNS resolver ===
 === Configured via System Settings > Network > Wi-Fi > Details > DNS ===
 
 $ dig app.cn_team.test
