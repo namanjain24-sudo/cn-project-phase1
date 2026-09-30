@@ -58,3 +58,4 @@ upstream config in `mac2-edge/nginx.conf`.
 Don't add a database, don't add npm dependencies, don't add auth. The grading is about the
 network path (DNS → TLS → LB → backend), not the app's features. Keep this file exactly as
 simple as it is unless your team specifically wants to extend it.
+
