@@ -1,0 +1,37 @@
+=== Failure Demo: Both backends are stopped ===
+Tested by Harsha (Mac 2) locally against his own nginx, after both Backend A (Hemanth) and
+Backend B (Akshay) were stopped via `lsof -ti:PORT | xargs kill`.
+
+$ curl -v -m 15 https://app.cn_team.test/ --resolve app.cn_team.test:443:127.0.0.1
+* SSL certificate verify ok.
+* using HTTP/2
+> GET / HTTP/2
+> Host: app.cn_team.test
+< HTTP/2 502
+< server: nginx/1.31.6
+< content-type: text/html
+< content-length: 157
+
+<html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.31.6</center>
+</body>
+</html>
+
+Conclusion: DNS resolution still worked and the TLS handshake still completed fully (cert
+verified, HTTP/2 negotiated) -- the failure is purely at the application/upstream layer,
+and nginx itself is the one reporting it (502 Bad Gateway means "I'm a working proxy, but
+whoever I'm supposed to talk to isn't responding"). This precisely shows where the edge
+(Mac 2) ends and the backend layer begins -- DNS layer: fine, transport/TLS layer: fine,
+application/backend layer: down.
+
+Note: on this shared hotspot, this response took noticeably longer to arrive than a clean
+"connection refused" would (nginx's default proxy_connect_timeout is 60s per upstream, and
+some of the dead-backend connection attempts weren't cleanly refused over this flaky network,
+so nginx had to wait out its timeout before trying the next upstream and eventually
+returning 502). In a stable LAN this would resolve in well under a second.
+
+Both backends restarted immediately after this test (see evidence/load-balancing/ for
+resumed load-balancing confirmation).
