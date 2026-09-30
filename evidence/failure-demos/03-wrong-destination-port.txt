@@ -1,0 +1,17 @@
+=== Failure Demo: Wrong destination port on the client ===
+Tested from Mac 1 (Naman) against Mac 2's edge (Harsha, 10.7.11.169), port 9999 instead of 443.
+
+$ curl -v --connect-timeout 6 https://app.cn_team.test:9999/ --resolve app.cn_team.test:9999:10.7.11.169
+*   Trying 10.7.11.169:9999...
+* connect to 10.7.11.169 port 9999 from 10.7.6.95 port 55594 failed: Connection refused
+curl: (7) Failed to connect to app.cn_team.test port 9999 after 1059 ms: Couldn't connect to server
+
+$ ping -c 2 10.7.11.169
+2 packets transmitted, 2 packets received, 0.0% packet loss
+
+Conclusion: The host itself is fully reachable (ping succeeds instantly, no packet loss),
+but the connection to the wrong port is refused immediately. This proves an IP address
+(the machine) and a port (the specific service on that machine) are independent identifiers
+-- a reachable host with the wrong port is not a reachable service. Contrast this with the
+DNS failure demos: there, the host itself becomes unreachable/wrong; here, the host is
+right but the door we're knocking on doesn't exist.
