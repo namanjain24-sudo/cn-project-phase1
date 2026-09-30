@@ -1,0 +1,14 @@
+=== A client machine confirmed using Mac 1 (10.7.6.95) as its DNS resolver ===
+=== Configured via System Settings > Network > Wi-Fi > Details > DNS ===
+
+$ dig app.cn_team.test
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 58572
+;; ANSWER SECTION:
+app.cn_team.test.       0       IN      A       10.7.11.169
+;; SERVER: 10.7.6.95#53(10.7.6.95)
+
+Confirms: client's system resolver is genuinely Mac 1's dnsmasq (not a public/default DNS),
+and resolution returns the correct edge machine IP (Harsha, Mac 2).
+
+This satisfies Task B's requirement: "Configure at least two other Macs to use Mac 1 as
+their DNS resolver." (1 of 2 confirmed -- second client pending.)
