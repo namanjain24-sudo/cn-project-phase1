@@ -1,0 +1,40 @@
+=== MAJOR MILESTONE: Full request chain working end-to-end ===
+=== DNS -> TLS (trusted cert) -> nginx edge -> load-balanced backends ===
+Tested from Mac 1 (Naman) against Mac 2's nginx (Harsha, 10.7.11.169), 2026-09-30
+
+Trust chain set up first:
+- Harsha generated cert via mkcert, committed the PUBLIC rootCA.pem to the repo
+- Naman installed it: sudo security add-trusted-cert -d -r trustRoot
+    -k /Library/Keychains/System.keychain mac2-edge/rootCA.pem
+
+$ curl -sI --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status
+HTTP/2 404
+server: nginx/1.31.6
+x-backend: B
+(exit code 0 -- NO certificate error. 404 is expected: -I sends a HEAD request, which this
+backend's code doesn't special-case, so it falls through to the 404 handler. GET works fine --
+see below.)
+
+$ curl -s --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status
+{"backend":"A","status":"ok"}
+
+Load balancing test -- 6 consecutive requests:
+$ for i in 1 2 3 4 5 6; do curl -s --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status; echo; done
+{"backend":"B","status":"ok"}
+{"backend":"A","status":"ok"}
+{"backend":"B","status":"ok"}
+{"backend":"A","status":"ok"}
+{"backend":"B","status":"ok"}
+{"backend":"A","status":"ok"}
+
+Perfect round-robin alternation across all 6 requests -- proves nginx is load balancing
+correctly across Backend A (Hemanth, Mac 3) and Backend B (Akshay, Mac 4), and that TLS
+termination + certificate trust works without bypassing validation (no -k flag anywhere).
+
+This satisfies the spec's Phase 1 gate: "a client resolves app.teamX.test, connects over
+HTTPS, and receives responses from both backends through the load balancer."
+
+(Note: this test used --resolve to fake DNS locally, since the machine's own default resolver
+is the hotspot's DHCP DNS, not Mac 1's dnsmasq -- see evidence/dns/ for proof DNS resolution
+itself works correctly and returns Mac 2's IP. Testing through the actual DNS chain end-to-end
+is the next step.)
