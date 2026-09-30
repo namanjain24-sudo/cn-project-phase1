@@ -1,0 +1,25 @@
+=== Failure Demo #2: DNS record points to the wrong IP (Mac 1 / Naman) ===
+
+Setup: temporarily changed app.cn_team.test / api.cn_team.test in dnsmasq.conf to point at
+Hemanth's machine (10.7.12.33, Backend A) instead of the correct edge machine, Harsha's Mac 2
+(10.7.11.169). Restarted dnsmasq to apply.
+
+$ dig @127.0.0.1 app.cn_team.test
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 24111
+;; ANSWER SECTION:
+app.cn_team.test.	0	IN	A	10.7.12.33
+(DNS resolution SUCCEEDS -- confidently returns an answer, just the wrong one)
+
+$ curl -sv --resolve app.cn_team.test:443:10.7.12.33 https://app.cn_team.test/
+*   Trying 10.7.12.33:443...
+* connect to 10.7.12.33 port 443 failed: Connection refused
+* Failed to connect to app.cn_team.test port 443: Couldn't connect to server
+(Connecting to what DNS gave us FAILS -- Hemanth's machine has no service on port 443,
+only the real edge, Mac 2, does)
+
+Conclusion: DNS is a directory, not a connection. It will confidently hand back whatever
+answer is configured, correct or not -- nothing validates that the IP is "the right one"
+except the configuration itself being correct. The failure only shows up one layer later,
+when the client actually tries to connect.
+
+Config restored to the correct IP (10.7.11.169) immediately after this test.
