@@ -1,0 +1,12 @@
+=== Hemanth's machine (Mac 3, 10.7.12.33) confirmed using Mac 1 (10.7.6.95) as its DNS resolver ===
+=== Configured via System Settings > Network > Wi-Fi > Details > DNS ===
+
+$ dig app.cn_team.test
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 44606
+;; ANSWER SECTION:
+app.cn_team.test.       0       IN      A       10.7.11.169
+;; SERVER: 10.7.6.95#53(10.7.6.95)
+
+This is the SECOND client machine confirmed (Akshay's was the first, see
+06-akshay-using-mac1-resolver.txt). Task B's requirement -- "Configure at least two other
+Macs to use Mac 1 as their DNS resolver" -- is now fully satisfied: 2/2 confirmed.
