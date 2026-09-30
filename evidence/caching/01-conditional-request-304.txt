@@ -1,0 +1,28 @@
+=== Task F: HTTP Caching Behavior (tested by Hemanth, Backend A) ===
+
+First request -- fresh 200 with Cache-Control + ETag:
+$ curl -si http://localhost:3001/api/data
+HTTP/1.1 200 OK
+X-Backend: A
+Cache-Control: max-age=60
+ETag: "da4313339d3554937c06860be7d7e754e3b18bcf"
+
+{"backend":"A","message":"This response is cacheable for 60 seconds."}
+
+Second request -- conditional, using If-None-Match with the ETag above:
+$ curl -si -H "If-None-Match: \"da4313339d3554937c06860be7d7e754e3b18bcf\"" http://localhost:3001/api/data
+HTTP/1.1 304 Not Modified
+X-Backend: A
+Cache-Control: max-age=60
+ETag: "da4313339d3554937c06860be7d7e754e3b18bcf"
+(no body)
+
+Demonstrates: first request is a full fresh response; second request, sending back the same
+ETag via If-None-Match, gets a 304 with no body since content hasn't changed -- saves
+bandwidth. This is distinct from a pure client-side cache hit (which never reaches the server
+at all within the 60s max-age window).
+
+Note: tested directly against Backend A (bypassing the load balancer) to keep the ETag
+consistent between requests -- going through nginx's round-robin would alternate backends,
+and each backend has a different ETag (since the JSON payload differs per backend), so a
+cached ETag from one wouldn't match if the next request landed on the other.
