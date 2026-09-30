@@ -1,0 +1,22 @@
+=== Load balancing recovered after troubleshooting ===
+
+Issue found: Akshay's laptop had gone to sleep, so Backend B (10.7.1.139:3002) stopped
+responding -- this caused nginx requests round-robined to B to hang/timeout, while requests
+to A (Hemanth, still awake) succeeded. This is a real-world illustration of why HA/failover
+matters (Phase 2 territory), and also shows nginx's default behavior does NOT automatically
+skip a hung (not-yet-erroring) backend the way it does a connection-refused one.
+
+Fix: Akshay's laptop woken up, backend B restarted.
+
+$ curl http://10.7.1.139:3002/api/status
+{"backend":"B","status":"ok"}
+
+$ for i in 1 2 3 4 5 6; do curl -s --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status; echo; done
+{"backend":"A","status":"ok"}
+{"backend":"B","status":"ok"}
+{"backend":"A","status":"ok"}
+{"backend":"B","status":"ok"}
+{"backend":"A","status":"ok"}
+{"backend":"B","status":"ok"}
+
+Clean 6/6 alternation restored.
