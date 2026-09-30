@@ -1,0 +1,24 @@
+=== Failure Demo #1: Wrong DNS server configured on a client (Mac 1 / Naman) ===
+
+$ networksetup -getdnsservers Wi-Fi
+There aren't any DNS Servers set on Wi-Fi.   (was on automatic)
+
+$ sudo networksetup -setdnsservers Wi-Fi 8.8.8.8
+
+$ dig app.cn_team.test
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 65482
+;; SERVER: 8.8.8.8#53(8.8.8.8)
+(FAILS -- Google's public DNS has never heard of our private domain)
+
+$ ping 10.7.11.169
+--- 10.7.11.169 ping statistics ---
+38 packets transmitted, 37 packets received, 2.6% packet loss
+(STILL WORKS -- direct IP connectivity is unaffected by DNS being wrong)
+
+Conclusion: DNS resolution and IP-layer reachability are independent. Breaking DNS does not
+break the network -- it only breaks the "directory service" that maps names to IPs.
+
+Interesting side-finding: even after resetting to "automatic" DNS, dig still failed, because
+this team's shared hotspot itself hands out 8.8.8.8 as its default DNS via DHCP. So this
+machine's own plain `dig` (without @127.0.0.1) never uses the local dnsmasq unless the
+resolver is explicitly set to this machine's own IP (10.7.21.117).
