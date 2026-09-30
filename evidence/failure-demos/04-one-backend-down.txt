@@ -1,0 +1,31 @@
+=== Failure Demo: One backend is stopped ===
+(Reusing a real incident that happened naturally during setup -- see
+evidence/load-balancing/02-recovered-after-akshay-sleep.txt for the original log)
+
+What happened: Akshay's laptop (Mac 4, Backend B) went to sleep mid-testing. Backend B
+stopped responding entirely (not a clean "connection refused" -- the process was just
+unresponsive because the machine itself was asleep).
+
+$ for i in 1 2 3 4; do curl -s -m 20 --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status; echo " (exit: $?)"; done
+{"backend":"A","status":"ok"} (exit: 0)
+ (exit: 28)     <- timed out, this request round-robined to the dead Backend B
+{"backend":"A","status":"ok"} (exit: 0)
+ (exit: 28)     <- same
+
+Observation vs. the spec's expected behavior: the spec expects the edge to "continue serving
+requests through the remaining backend" transparently. What we actually saw was slightly
+different and more informative: nginx's default upstream behavior (proxy_next_upstream) only
+skips a backend on a clean error (connection refused, timeout establishing the TCP
+connection, 5xx response) -- NOT on a backend that accepted no connection at all because the
+whole machine was asleep, which just hangs. So every other request (the ones round-robined to
+B) hung for the client instead of failing over cleanly.
+
+This is actually a more realistic and useful lesson than a clean "stopped" demo would have
+been: a cleanly-stopped process (Ctrl+C, connection refused instantly) DOES fail over cleanly
+under nginx's defaults, because nginx sees the refusal instantly and retries the next
+upstream. An unresponsive-but-not-refusing backend (asleep machine, hung process, firewall
+silently dropping packets) does NOT fail over cleanly with default settings -- this is exactly
+what Phase 2's "HA Failover" extension (active health checks) is meant to solve.
+
+After waking Akshay's machine and restarting Backend B, requests returned to clean 6/6
+alternation (see evidence/load-balancing/02-recovered-after-akshay-sleep.txt).
