@@ -1,0 +1,9 @@
+=== Backend A (Hemanth, Mac 3, 10.7.12.33:3001) confirmed running and reachable over LAN ===
+
+On Hemanth's machine:
+$ cd mac3-backend-a && node server.js
+Backend A listening on 0.0.0.0:3001
+
+Tested from Mac 1 (Naman) over the LAN:
+$ curl http://10.7.12.33:3001/api/status
+{"backend":"A","status":"ok"}
