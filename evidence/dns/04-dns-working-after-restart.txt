@@ -1,0 +1,22 @@
+=== Mac 1 (DNS) — dnsmasq restarted with correct config, resolution confirmed working ===
+
+$ sudo brew services restart dnsmasq
+Stopping `dnsmasq`... (might take a while)
+==> Successfully stopped `dnsmasq` (label: sh.brew.dnsmasq)
+==> Successfully started `dnsmasq` (label: sh.brew.dnsmasq)
+
+$ dig @127.0.0.1 app.cn_team.test
+
+; <<>> DiG 9.10.6 <<>> @127.0.0.1 app.cn_team.test
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 53500
+;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+
+;; QUESTION SECTION:
+;app.cn_team.test.        IN    A
+
+;; ANSWER SECTION:
+app.cn_team.test.    0    IN    A    10.7.11.169
+
+;; SERVER: 127.0.0.1#53(127.0.0.1)
+;; WHEN: Wed Sep 30 09:07:27 IST 2026
