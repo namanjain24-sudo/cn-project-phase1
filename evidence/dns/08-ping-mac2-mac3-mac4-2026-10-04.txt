@@ -25,3 +25,18 @@ round-trip min/avg/max/stddev = 10.672/37.572/67.188/26.960 ms
 
 Confirms Mac2 <-> Mac3 and Mac2 <-> Mac4 reachability, 0% packet loss both.
 Remaining pair for full A5 coverage: Mac3 <-> Mac4.
+
+=== Mac3 <-> Mac4, 2026-10-04 (run from Mac 3, Hemanth) ===
+
+$ ping -c 4 10.7.21.77
+PING 10.7.21.77 (10.7.21.77): 56 data bytes
+64 bytes from 10.7.21.77: icmp_seq=0 ttl=64 time=11.134 ms
+64 bytes from 10.7.21.77: icmp_seq=1 ttl=64 time=65.920 ms
+64 bytes from 10.7.21.77: icmp_seq=2 ttl=64 time=16.452 ms
+64 bytes from 10.7.21.77: icmp_seq=3 ttl=64 time=31.503 ms
+
+--- 10.7.21.77 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 11.134/31.252/65.920/21.364 ms
+
+All 6 machine pairs now confirmed reachable, 0% packet loss across the board. A5 complete.
