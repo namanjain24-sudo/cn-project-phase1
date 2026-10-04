@@ -1,0 +1,27 @@
+=== A5: Additional ping pairs, 2026-10-04 (after hotspot IP reassignment) ===
+=== Run from Mac 2 (Harsha, 10.7.11.169) ===
+
+$ ping -c 4 10.7.20.9   # Mac 3 (Hemanth, Backend A)
+PING 10.7.20.9 (10.7.20.9): 56 data bytes
+64 bytes from 10.7.20.9: icmp_seq=0 ttl=64 time=94.954 ms
+64 bytes from 10.7.20.9: icmp_seq=1 ttl=64 time=128.643 ms
+64 bytes from 10.7.20.9: icmp_seq=2 ttl=64 time=54.297 ms
+64 bytes from 10.7.20.9: icmp_seq=3 ttl=64 time=18.276 ms
+
+--- 10.7.20.9 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 18.276/74.043/128.643/41.588 ms
+
+$ ping -c 4 10.7.21.77  # Mac 4 (Akshay, Backend B)
+PING 10.7.21.77 (10.7.21.77): 56 data bytes
+64 bytes from 10.7.21.77: icmp_seq=0 ttl=64 time=10.689 ms
+64 bytes from 10.7.21.77: icmp_seq=1 ttl=64 time=10.672 ms
+64 bytes from 10.7.21.77: icmp_seq=2 ttl=64 time=61.738 ms
+64 bytes from 10.7.21.77: icmp_seq=3 ttl=64 time=67.188 ms
+
+--- 10.7.21.77 ping statistics ---
+4 packets transmitted, 4 packets received, 0.0% packet loss
+round-trip min/avg/max/stddev = 10.672/37.572/67.188/26.960 ms
+
+Confirms Mac2 <-> Mac3 and Mac2 <-> Mac4 reachability, 0% packet loss both.
+Remaining pair for full A5 coverage: Mac3 <-> Mac4.

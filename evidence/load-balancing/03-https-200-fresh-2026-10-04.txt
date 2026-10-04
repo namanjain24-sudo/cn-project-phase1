@@ -1,0 +1,38 @@
+=== B1: Full HTTPS request succeeds end-to-end (fresh run, 2026-10-04, after IP reassignment) ===
+Run from Mac 2 (Harsha) itself against its own nginx, after updating upstream IPs for Mac3/Mac4.
+
+$ curl -v --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/
+
+* Added app.cn_team.test:443:10.7.11.169 to DNS cache
+* Trying 10.7.11.169:443...
+* Connected to app.cn_team.test (10.7.11.169) port 443
+* ALPN: curl offers h2,http/1.1
+* (304) (OUT), TLS handshake, Client hello (1):
+*  CAfile: /etc/ssl/cert.pem
+* (304) (IN), TLS handshake, Server hello (2):
+* (304) (IN), TLS handshake, Certificate (11):
+* (304) (IN), TLS handshake, CERT verify (15):
+* (304) (IN), TLS handshake, Finished (20):
+* SSL connection using TLSv1.3 / AEAD-CHACHA20-POLY1305-SHA256
+* ALPN: server accepted h2
+* Server certificate:
+*  subject: O=mkcert development certificate; OU=palaparthiharshakarthikeya@Palaparthis-MacBook-Pro.local
+*  subjectAltName: host "app.cn_team.test" matched cert's "app.cn_team.test"
+*  SSL certificate verify ok.
+* using HTTP/2
+> GET / HTTP/2
+> Host: app.cn_team.test
+> User-Agent: curl/8.7.1
+> Accept: */*
+>
+< HTTP/2 200
+< server: nginx/1.31.6
+< date: Sun, 04 Oct 2026 17:19:06 GMT
+< content-type: application/json
+< x-backend: A
+<
+{"message":"Backend A is running","backend":"A","timestamp":"2026-10-04T17:19:06.779Z"}
+
+No -k flag used. Domain name used throughout (app.cn_team.test), IP only via --resolve
+override (DNS chain itself proven separately in evidence/dns/). TLS fully validated,
+certificate trusted, HTTP/2 200 OK returned. Satisfies the Phase 1 HTTPS gate.
