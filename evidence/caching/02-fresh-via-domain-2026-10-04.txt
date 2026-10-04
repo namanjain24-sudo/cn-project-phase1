@@ -1,0 +1,16 @@
+=== D1: Caching headers via real domain, fresh run 2026-10-04 ===
+=== Run from Mac 3 (Hemanth) ===
+
+$ curl -si --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/data
+HTTP/2 200
+server: nginx/1.31.6
+date: Sun, 04 Oct 2026 17:31:35 GMT
+content-type: application/json
+x-backend: B
+cache-control: max-age=60
+etag: "26796b05633622cc297daf5f6b629343f655a86c"
+
+{"backend":"B","message":"This response is cacheable for 60 seconds."}
+
+Confirms Cache-Control, ETag, X-Backend, and Date headers all present on the real deployed
+service (via nginx edge, not direct-to-backend), HTTP/2 200, no -k flag.
