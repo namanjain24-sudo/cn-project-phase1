@@ -33,12 +33,13 @@ keep it in this file and commit it):
 
 | Machine | Person | Role | IPv4 Address | Subnet Mask | Gateway | Interface | MAC Address |
 |---|---|---|---|---|---|---|---|
-| Mac 1 | Naman | DNS Server | 10.7.6.95 | 255.255.224.0 | 10.7.0.1 | en0 | ea:13:1a:a7:22:15 |
+| Mac 1 | Naman | DNS Server | 10.7.25.150 | 255.255.224.0 | 10.7.0.1 | en0 | ea:13:1a:a7:22:15 |
 | Mac 2 | Harsha Karthikeya | Edge/LB/TLS | 10.7.11.169 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c2:fb:bc |
-| Mac 3 | Hemanth | Backend A | 10.7.12.33 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c1:92:86 |
-| Mac 4 | Akshay | Backend B + Client | 10.7.1.139 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:bd:67:24 |
+| Mac 3 | Hemanth | Backend A | 10.7.20.9 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c1:92:86 |
+| Mac 4 | Akshay | Backend B + Client | 10.7.21.77 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:bd:67:24 |
 
-Full table confirmed by the team, last updated 2026-09-30. This is a shared mobile hotspot
+Full table confirmed by the team, last updated 2026-10-04 (IPs reassigned on hotspot
+reconnect — Mac 1, 3, 4 changed; Mac 2 stayed the same). This is a shared mobile hotspot
 (255.255.224.0 = a /19, and high ping latency was observed earlier, 200–1500ms) rather than a
 router — **IPs can and did change after a reconnect** (Mac 1's IP changed once already during
 setup). If a machine's IP changes again, re-run `ipconfig getifaddr en0` on that machine,
