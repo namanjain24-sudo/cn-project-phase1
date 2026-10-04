@@ -1,0 +1,28 @@
+=== A4: dig @8.8.8.8 app.cn_team.test — proves domain is private (NXDOMAIN) ===
+=== Run from Mac 3 (Hemanth, 10.7.20.9), 2026-10-04 ===
+
+$ dig @8.8.8.8 app.cn_team.test
+
+; <<>> DiG 9.10.6 <<>> @8.8.8.8 app.cn_team.test
+; (1 server found)
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 58717
+;; flags: qr rd ra ad; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 512
+;; QUESTION SECTION:
+;app.cn_team.test.              IN      A
+
+;; AUTHORITY SECTION:
+.                       86371   IN      SOA     a.root-servers.net. nstld.verisign-grs.com. 2026100400 1800 900 604800 86400
+
+;; Query time: 15 msec
+;; SERVER: 8.8.8.8#53(8.8.8.8)
+;; WHEN: Sun Oct 04 22:54:18 IST 2026
+;; MSG SIZE  rcvd: 120
+
+Confirms: Google's public DNS (8.8.8.8) has no record of app.cn_team.test (NXDOMAIN) --
+proves this is a private domain that only resolves via our own dnsmasq (Mac 1), not a
+real public domain.
