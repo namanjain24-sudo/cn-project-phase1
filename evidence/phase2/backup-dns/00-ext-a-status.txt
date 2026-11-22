@@ -49,3 +49,20 @@ GETTING HERE REQUIRED A FIX (worth explaining in the viva):
   time, so the host and the network were never in question. A TIMEOUT on one
   port while another port on the SAME host answers means a filter, not a dead
   service -- refused would have meant nothing was listening.
+
+---------------------------------------------------------------------------
+PERSISTENCE (added after the firewall approval)
+---------------------------------------------------------------------------
+The backup resolver was first brought up in the foreground, which is what let
+macOS raise its "accept incoming connections?" prompt. Once approved, the
+approval applies to the BINARY, so the normal background service inherits it:
+
+    $ sudo brew services start dnsmasq
+    ==> Successfully started `dnsmasq` (label: sh.brew.dnsmasq)
+
+Re-verified from Mac 1 immediately afterwards:
+    $ dig @10.7.25.47 app.cn_team.test +short   ->  10.7.11.169   (backup)
+    $ dig @10.7.20.236 app.cn_team.test +short  ->  10.7.11.169   (primary)
+
+Both resolvers now survive the terminal being closed, which matters because the
+demo cannot depend on a window staying open.
