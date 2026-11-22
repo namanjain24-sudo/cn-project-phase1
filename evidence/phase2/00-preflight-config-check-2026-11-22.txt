@@ -5,6 +5,13 @@ confirm every Phase 2 config and script actually works, so that nothing is
 discovered broken in front of the evaluator. Real demo evidence goes in the
 other folders under evidence/phase2/.
 
+NOTE ON THE IP ADDRESSES BELOW: this dry run was done before the team
+reassembled, so it used the last known IP table (4 October). Mac 1, Mac 3 and
+Mac 4 were all reassigned by the hotspot afterwards. The live-LAN results, with
+the real addresses, are in docs/phase2-report.md and in the per-extension
+folders beside this file. Nothing here is demo evidence -- it is a pre-flight
+check that the configs and scripts work at all.
+
 Method: the four machine roles were run together on one laptop using the REAL
 config templates (only ports, IPs and cert paths localised), with a locally
 signed certificate so every curl ran WITHOUT -k.
