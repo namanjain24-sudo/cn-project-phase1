@@ -1,33 +1,51 @@
-=== PHASE 2 Extension A — backup DNS resolver status, 2026-11-22 ===
+=== PHASE 2 Extension A — backup DNS resolver, 2026-11-22 ===
 === Verified from Mac 1 (Naman, 10.7.20.236) ===
 
-WORKING
-  $ dig @10.7.20.236 app.cn_team.test +short     # primary, Mac 1
-    10.7.11.169
-  Mac 1's resolver is reachable across the LAN -- confirmed independently from
-  Mac 3, which got 10.7.11.169 when querying @10.7.20.236.
+Primary resolver : Mac 1, Naman,   10.7.20.236
+Backup  resolver : Mac 3, Hemanth, 10.7.25.47   (not Mac 1, as the spec requires)
 
-  On Mac 3 itself, the backup resolver answers correctly:
-    $ dig @127.0.0.1 app.cn_team.test            # run on Mac 3
-      app.cn_team.test.   30   IN   A   10.7.11.169
-      ;; SERVER: 127.0.0.1#53(127.0.0.1)
-    Identical record and identical TTL to the primary -- the two resolvers agree,
-    which is the property that makes failover safe rather than dangerous.
+$ dig @10.7.20.236 app.cn_team.test +noall +answer      # PRIMARY
+  
+  ; <<>> DiG 9.10.6 <<>> @10.7.20.236 app.cn_team.test +noall +answer +time=3 +tries=1
+  ; (1 server found)
+  ;; global options: +cmd
+  app.cn_team.test.	30	IN	A	10.7.11.169
+$ dig @10.7.25.47  app.cn_team.test +noall +answer      # BACKUP
+  
+  ; <<>> DiG 9.10.6 <<>> @10.7.25.47 app.cn_team.test +noall +answer +time=3 +tries=1
+  ; (1 server found)
+  ;; global options: +cmd
+  app.cn_team.test.	30	IN	A	10.7.11.169
 
-BLOCKED
-  $ dig @10.7.25.47 app.cn_team.test +short      # backup, Mac 3, from Mac 1
-    ;; connection timed out; no servers could be reached
+$ dig @10.7.20.236 api.cn_team.test +noall +answer      # PRIMARY
+  
+  ; <<>> DiG 9.10.6 <<>> @10.7.20.236 api.cn_team.test +noall +answer +time=3 +tries=1
+  ; (1 server found)
+  ;; global options: +cmd
+  api.cn_team.test.	30	IN	A	10.7.11.169
+$ dig @10.7.25.47  api.cn_team.test +noall +answer      # BACKUP
+  
+  ; <<>> DiG 9.10.6 <<>> @10.7.25.47 api.cn_team.test +noall +answer +time=3 +tries=1
+  ; (1 server found)
+  ;; global options: +cmd
+  api.cn_team.test.	30	IN	A	10.7.11.169
 
-  Mac 3's dnsmasq serves its own loopback but is unreachable from the LAN.
-  Its Backend A on TCP 3001 IS reachable from Mac 1, so the host and the
-  network are fine -- only this one service is being filtered.
+Both resolvers return an IDENTICAL record and an IDENTICAL TTL for both names.
+That matters more than simply having a second server: if the two disagreed,
+failover would quietly send clients to a different machine, which is worse
+than having no backup at all. Both configs are generated from config/ips.env,
+so they cannot drift apart by accident.
 
-  Cause: Mac 3 is an MDM-managed machine. Attempting to allow dnsmasq through
-  the macOS Application Firewall returns:
+GETTING HERE REQUIRED A FIX (worth explaining in the viva):
+  Mac 3 is an MDM-managed machine. dnsmasq served its own loopback but was
+  unreachable from the LAN, and the macOS Application Firewall refused to be
+  changed from the command line:
       Firewall settings cannot be modified from command line on managed Mac computers.
-  node was allowed earlier through the GUI prompt, which is why port 3001 works
-  while port 53 does not.
+  The GUI's add button was locked too. Running dnsmasq in the FOREGROUND made
+  macOS raise its normal 'accept incoming connections?' prompt, which could be
+  approved -- after which the backup resolver became reachable across the LAN.
 
-  Note the diagnostic value: REFUSED would mean nothing is listening; a TIMEOUT
-  means packets are being dropped by a filter. dnsmasq is listening -- proven on
-  loopback -- so the timeout isolates the fault to the firewall, not the service.
+  Diagnostic point: the backend on TCP 3001 was reachable from Mac 1 the whole
+  time, so the host and the network were never in question. A TIMEOUT on one
+  port while another port on the SAME host answers means a filter, not a dead
+  service -- refused would have meant nothing was listening.
