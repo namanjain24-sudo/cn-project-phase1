@@ -1,0 +1,28 @@
+=== EXTENSION A — failover demo, state BEFORE stopping the primary ===
+=== Run from Mac 1 (Naman), 2026-11-22 ===
+
+Extension A -- backup DNS resolver
+------------------------------------------------------------
+1. Which resolvers is this client configured to use?
+  10.7.20.236
+  10.7.25.47
+  PASS  both primary (10.7.20.236) and backup (10.7.25.47) are listed
+------------------------------------------------------------
+2. Query each resolver DIRECTLY (bypasses the client's own cache)
+  PASS  primary dnsmasq (Mac 1) (10.7.20.236) answered 10.7.11.169  -- matches the expected edge IP
+  PASS  backup  dnsmasq (Mac 3) (10.7.25.47) answered 10.7.11.169  -- matches the expected edge IP
+------------------------------------------------------------
+3. Does the CLIENT still resolve the name using its normal resolver?
+  PASS  system resolver returned 10.7.11.169 for app.cn_team.test
+------------------------------------------------------------
+Verdict
+        Both resolvers healthy -- this is the 'before' state.
+        Now stop the primary on Mac 1:  sudo brew services stop dnsmasq
+        ...then run this script again.
+
+  The distinction the spec asks you to explain:
+    DNS SERVICE failure       the resolver is gone, so names cannot be turned
+                              into IPs at all. Nothing resolves. (This demo.)
+    APPLICATION SERVER failure resolution still works perfectly -- the name
+                              still maps to an IP -- but the service at that IP
+                              does not answer. You get 502, not NXDOMAIN.
