@@ -311,7 +311,7 @@ is written: it permits the load-balancer tier, not a specific load-balancer.
 Re-verified afterwards that the backends still time out from a client while the
 standby can reach them.
 
-### 3.3 Findings carried over from Phase 1
+### 3.4 Findings carried over from Phase 1
 
 The most valuable thing Phase 1 produced was an accident: Akshay's laptop slept
 mid-test, and the team noticed that nginx's default `proxy_next_upstream` only
