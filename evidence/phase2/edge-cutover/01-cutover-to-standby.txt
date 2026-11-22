@@ -1,0 +1,59 @@
+=== PHASE 2 Extension E — EDGE MIGRATION VIA DNS — 2026-11-22 ===
+=== Watched from Mac 1 (Naman, 10.7.20.236) ===
+
+Primary edge : Mac 2, 10.7.11.169
+Standby edge : Mac 4, 10.7.21.130  (same nginx config, SAME certificate)
+
+Action on Mac 1:   ./scripts/dns-cutover.sh to-standby
+  -> rewrites app/api.cn_team.test A records and restarts dnsmasq
+  -> a timestamped backup of dnsmasq.conf is taken first
+
+Columns below:
+  authoritative  = what dnsmasq on Mac 1 currently serves
+  client-cached  = what this client's resolver believes
+  served-by      = the IP that ACTUALLY answered the HTTPS request
+                   (curl's %{remote_ip} -- no server-side configuration needed)
+
+  23:23:23  authoritative=10.7.11.169   (primary)  client-cached=10.7.11.169   (primary)  served-by=10.7.11.169   (primary)
+  23:23:25  authoritative=10.7.11.169   (primary)  client-cached=10.7.11.169   (primary)  served-by=10.7.11.169   (primary)
+  23:23:28  authoritative=10.7.11.169   (primary)  client-cached=10.7.11.169   (primary)  served-by=10.7.11.169   (primary)
+  23:23:30  authoritative=10.7.11.169   (primary)  client-cached=10.7.11.169   (primary)  served-by=10.7.11.169   (primary)
+  23:23:32  authoritative=10.7.11.169   (primary)  client-cached=10.7.11.169   (primary)  served-by=10.7.11.169   (primary)
+  23:23:35  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:39  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:42  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:44  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:46  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:49  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:51  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:55  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  23:23:57  authoritative=10.7.21.130   (STANDBY)  client-cached=10.7.21.130   (STANDBY)  served-by=10.7.21.130   (STANDBY)
+  ... (continues on the standby for the rest of the run)
+
+RESULT
+  At 23:23:32 every column said 10.7.11.169 (Mac 2).
+  At 23:23:35 every column said 10.7.21.130 (Mac 4).
+  The public entry point of the service moved to a different physical machine.
+  Nothing on the client was touched: same URL, same certificate, no warning,
+  no restart, no reconfiguration. Only the NAME was repointed.
+
+WHY TLS DID NOT BREAK
+  The certificate is issued to the name app.cn_team.test, not to a machine or
+  an IP. Both edges present the same certificate, and the client validates the
+  name it asked for. This is the whole reason DNS-based migration is possible
+  without reissuing anything.
+
+INTERACTION WITH EXTENSION C (found and fixed during this run)
+  The backend firewall originally allowed only Mac 2. The moment traffic moved
+  to the standby, the standby would have been firewalled out of the backends
+  and returned 502 for everything -- Extension C would have silently broken
+  Extension E. The pf rules were changed to allow the EDGE TIER (both the
+  primary and the standby), which is how a real security group is written:
+  it allows the load-balancer tier, not one specific load-balancer host.
+  Verified after the change: backends still time out from a client, and the
+  standby can reach them.
+
+REMAINING SINGLE POINT OF FAILURE, REVISITED
+  This makes the edge RECOVERABLE, not redundant. The cutover is manual and
+  is bounded by the DNS TTL. True HA would publish several edges under one
+  name, or use a floating IP a standby claims automatically.
