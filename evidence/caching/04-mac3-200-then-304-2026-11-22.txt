@@ -1,0 +1,40 @@
+=== TASK F — HTTP caching: 200 then 304 Not Modified — 2026-11-22 ===
+=== Run on Mac 3 (Hemanth) against Backend A ===
+
+$ ./scripts/test-cache.sh http://localhost:3001
+
+  == First request: full 200 with Cache-Control + ETag ==
+  HTTP/1.1 200 OK
+  X-Backend: A
+  Content-Type: application/json
+  Cache-Control: max-age=60
+  ETag: "da4313339d3554937c06860be7d7e754e3b18bcf"
+
+  == Second request, with If-None-Match: expect 304 Not Modified, empty body ==
+  HTTP/1.1 304 Not Modified
+  X-Backend: A
+  Cache-Control: max-age=60
+  ETag: "da4313339d3554937c06860be7d7e754e3b18bcf"
+  (no body)
+
+TWO BUGS THIS RUN FIXED, BOTH OF WHICH APPEARED IN THE PHASE 1 VIDEO:
+  1. The script used 'curl -sI', which sends a HEAD request. These backends
+     only route GET, so HEAD fell through to the 404 handler -- that is the
+     'HTTP/2 404' visible on camera in Phase 1. It now uses -D- -o /dev/null,
+     a GET that prints the response headers.
+  2. On camera the ETag was pasted WITHOUT the 'If-None-Match:' header name,
+     so curl sent a malformed header and the server answered 200 while the
+     narration claimed 304. The script builds the header correctly.
+
+WHY THIS IS RUN AGAINST ONE BACKEND AND NOT THE DOMAIN:
+  The ETag is a hash of the response body, and /api/data's body contains the
+  backend id. Backend A and Backend B therefore compute DIFFERENT ETags.
+  Through nginx round-robin a conditional request can land on the other
+  backend, whose ETag does not match, so it correctly returns 200 rather
+  than 304. That is caching behaving exactly as specified, not a defect --
+  and it is a good answer to give if the evaluator asks.
+
+THE THREE CASES TO DISTINGUISH IN THE VIVA:
+  fresh cache hit      max-age has not expired; no request reaches the server
+  conditional request  If-None-Match -> 304, headers only, no body
+  full new request     200 with the full body and an ETag

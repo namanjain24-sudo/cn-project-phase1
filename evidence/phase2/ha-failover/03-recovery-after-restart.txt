@@ -1,0 +1,31 @@
+=== PHASE 2 Extension D — RECOVERY after restarting Backend A — 2026-11-22 ===
+=== Client: Mac 1 (Naman) ===
+
+The spec requires both halves: route around a dead backend, AND resume
+balancing once it returns.
+
+Action on Mac 3:   cd mac3-backend-a && node server.js
+
+$ curl -s http://10.7.25.47:3001/api/status
+  {"backend":"A","status":"ok"}
+
+$ ./scripts/test-lb.sh 10
+  10 requests to https://app.cn_team.test/api/status
+  ------------------------------------------------------------
+    request 1  -> Backend B
+    request 2  -> Backend A
+    request 3  -> Backend B
+    request 4  -> Backend A
+    request 5  -> Backend B
+    request 6  -> Backend A
+    request 7  -> Backend B
+    request 8  -> Backend A
+    request 9  -> Backend B
+    request 10 -> Backend A
+  ------------------------------------------------------------
+    Backend A: 5   Backend B: 5   failed: 0
+    PASS  both backends served traffic -- round-robin load balancing confirmed
+
+  Balancing resumed across both backends. nginx re-probes an ejected upstream
+  once fail_timeout (10s) has elapsed, so recovery is automatic -- nothing was
+  reloaded or reconfigured on the edge.
