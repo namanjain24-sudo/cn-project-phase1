@@ -1,0 +1,30 @@
+23:26:40  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:44  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:46  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:48  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:50  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:53  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:26:55  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:27:00  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:27:02  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:27:04  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:27:06  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+23:27:08  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+23:27:10  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+23:27:13  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+23:27:17  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+23:27:19  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:22  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:24  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:26  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:28  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:31  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:33  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:35  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:37  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:39  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:42  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:44  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:46  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:48  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+23:27:50  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   

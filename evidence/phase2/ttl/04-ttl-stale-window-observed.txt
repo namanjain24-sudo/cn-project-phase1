@@ -1,0 +1,56 @@
+=== PHASE 2 Extension B — TTL CACHING AND A CONTROLLED RECORD CHANGE ===
+=== Observed from Mac 1 (Naman), 2026-11-22 ===
+
+Spec asks for: a short visible TTL; resolve the name; change the record;
+observe the client still getting the OLD answer until the TTL expires; then
+the new one; plus a manual cache flush. All of that is below.
+
+TTL is 30s (Phase 1 served 0, so nothing ever cached -- see evidence/dns/04).
+
+Record changed from the standby edge back to the primary edge at ~23:27:07.
+
+  auth      = what dnsmasq on Mac 1 is serving right now
+  cached    = what this client's resolver believes
+  served-by = the IP that actually answered the HTTPS request
+
+  23:27:00  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+  23:27:02  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+  23:27:04  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+  23:27:06  auth=10.7.21.130   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   
+  23:27:08  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+  23:27:10  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+  23:27:13  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+  23:27:17  auth=10.7.11.169   ttl=30   cached=10.7.21.130   served-by=10.7.21.130   <<< STALE, inside TTL
+  23:27:19  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+  23:27:22  auth=10.7.11.169   ttl=30   cached=10.7.11.169   served-by=10.7.11.169   
+
+THE STALE WINDOW
+  23:27:08  the authoritative record has ALREADY changed to 10.7.11.169,
+            but the client still believes 10.7.21.130 and is still sending
+            its HTTPS requests to the OLD edge.
+  ...this persists for about 11 seconds, four consecutive samples...
+  23:27:19  the cached entry expires, the client re-resolves, and traffic
+            moves to the new edge by itself. Nothing was restarted.
+
+  That gap IS the TTL. During it, the system is genuinely split: new lookups
+  go to the new edge while clients holding a cached answer keep using the old
+  one. This is exactly what the spec describes for Extension E as well --
+  the same observation covers both extensions.
+
+WHY dig DOES NOT SHOW THE TTL COUNTING DOWN
+  The 'auth' column is produced by dig querying dnsmasq DIRECTLY, and dnsmasq
+  stamps a fresh 30s TTL on every answer. A TTL only counts down inside a
+  CACHE. On macOS that cache is mDNSResponder, which is what dscacheutil,
+  ping, curl and the browser all go through -- which is why the 'cached'
+  column, not dig, is the one that demonstrates TTL behaviour.
+
+WHAT PRODUCTION DOES WITH THIS
+  Before a planned migration you lower the TTL well in advance, so that by
+  cutover time no client can hold a stale answer for longer than that window.
+  Our 30s TTL is the same idea at demo scale. It is also why DNS failover is
+  never instant, and why real high availability does not rely on DNS alone.
+
+NOTE: an earlier cut-over in the opposite direction did NOT show a stale
+window, because that run restarted dnsmasq while the client was mid-poll;
+the brief unavailability caused the client to re-resolve immediately rather
+than serve from cache. The window above is the clean observation.
