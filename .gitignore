@@ -10,6 +10,14 @@ mac2-edge/certs/
 # every client machine can trust it; only *-key.pem files are the sensitive ones.)
 *-key.pem
 *.key
+# A TLS private key under ANY name, anywhere in the tree. The certs now get
+# copied between machines for the standby edge (Ext E), so a stray privkey.pem
+# landing in the repo is a real risk. The reference project we looked at
+# committed exactly this file by accident.
+privkey.pem
+*privkey*.pem
+*.p12
+*.pfx
 
 # Node (no dependencies in this project, but just in case someone adds any)
 node_modules/
