@@ -1,0 +1,58 @@
+=== PHASE 1 GATE, PROVEN LIVE THROUGH THE REAL DNS CHAIN — 2026-11-22 ===
+=== Client: Mac 1 (Naman, 10.7.20.236), resolver set to Mac 1 + Mac 3 ===
+
+This run uses NO --resolve, NO -k and NO IP address anywhere. Every step goes
+through the team's own DNS and the team's own certificate trust.
+
+$ networksetup -getdnsservers Wi-Fi
+  10.7.20.236
+  10.7.25.47
+  (primary Mac 1, backup Mac 3 -- Extension A ordering)
+
+--- Demo step 3: resolve the private domain ---
+$ dig app.cn_team.test
+  ;; ANSWER SECTION:
+  app.cn_team.test.	30	IN	A	10.7.11.169
+  ;; SERVER: 10.7.20.236#53(10.7.20.236)
+
+  TTL 30 (Phase 2 Ext B), answer is Mac 2's IP, and SERVER confirms the answer
+  came from our own dnsmasq on Mac 1 -- not from a public resolver.
+
+--- Demo step 4: HTTPS using the domain name ---
+$ curl -s -D- https://app.cn_team.test/api/status
+  HTTP/2 200 
+  server: nginx/1.31.6
+  date: Sun, 22 Nov 2026 17:19:53 GMT
+  content-type: application/json
+  x-backend: B
+  
+  {"backend":"B","status":"ok"}
+  HTTP/2 200. No certificate warning and no -k, so the team CA is genuinely
+  trusted on this client. The spec requires exactly this: no bypassed
+  validation, and no IP address in the URL.
+
+--- Demo step 5: load balancing across both backends ---
+$ ./scripts/test-lb.sh 10
+  10 requests to https://app.cn_team.test/api/status
+  ------------------------------------------------------------
+    request 1  -> Backend A
+    request 2  -> Backend B
+    request 3  -> Backend A
+    request 4  -> Backend B
+    request 5  -> Backend A
+    request 6  -> Backend B
+    request 7  -> Backend A
+    request 8  -> Backend B
+    request 9  -> Backend A
+    request 10 -> Backend B
+  ------------------------------------------------------------
+    Backend A: 5   Backend B: 5   failed: 0
+    PASS  both backends served traffic -- round-robin load balancing confirmed
+
+SPEC PHASE 1 GATE: "a client resolves app.teamX.test, connects over HTTPS, and
+receives responses from both backends through the load balancer."  -- MET.
+
+Worth noting for the viva: all three of these were shown in the Phase 1
+submission video only as narration, never on screen -- the dig answer was
+never displayed, the load-balancing script printed nothing because of a
+set -e bug, and the caching 304 was a mistyped header. All three now run.
