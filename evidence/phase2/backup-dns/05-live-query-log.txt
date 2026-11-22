@@ -1,0 +1,31 @@
+=== PHASE 2 Extension A — the backup resolver logging live queries ===
+=== Captured on Mac 3 (Hemanth, 10.7.25.47), 2026-11-22 ===
+
+dnsmasq running in the foreground with log-queries enabled, showing real
+queries arriving over the LAN from Mac 1 (10.7.20.236) and being answered
+from the configured record:
+
+    dnsmasq: started, version 2.93 cachesize 150
+    dnsmasq: using nameserver 8.8.8.8#53
+    dnsmasq: using nameserver 1.1.1.1#53
+    dnsmasq: query[A] app.cn_team.test from 10.7.20.236
+    dnsmasq: config app.cn_team.test is 10.7.11.169
+    dnsmasq: query[A] api.cn_team.test from 10.7.20.236
+    dnsmasq: config api.cn_team.test is 10.7.11.169
+
+This is the strongest single piece of Extension A evidence: it is the BACKUP
+resolver, on a different machine from the primary, answering a real query
+that arrived across the network from another team machine. 'config' means the
+answer came from our own address= record, not from an upstream forwarder.
+
+Also visible, and worth explaining in the viva:
+
+    $ /opt/homebrew/Cellar/dnsmasq/2.93/sbin/dnsmasq        # no sudo
+    dnsmasq: failed to create listening socket for 10.7.25.47: Permission denied
+
+  Port 53 is a well-known port below 1024, so only root may bind it. Note how
+  this error differs from the earlier one on the same machine:
+    'Can't assign requested address'  -> the IP does not belong to this host
+    'Permission denied'               -> the IP is fine, the USER is not allowed
+  Same failure to start, two completely different causes, distinguishable from
+  the error text alone.
