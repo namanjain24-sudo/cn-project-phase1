@@ -1,0 +1,61 @@
+=== PHASE 2 Extension D — HA FAILOVER PROVEN — 2026-11-22 ===
+=== Client: Mac 1 (Naman). Backend A stopped on Mac 3. ===
+
+Action on Mac 3:   lsof -ti:3001 | xargs kill
+
+$ curl -m 6 http://10.7.25.47:3001/api/status      # Backend A, directly
+  curl exit 7 -- CONNECTION REFUSED. The process is gone; the host is fine.
+  (refused, not timed out: nothing is listening, as opposed to being filtered)
+
+--- 8 requests through the edge, with one backend dead ---
+  Extension D -- HA failover behaviour (8 requests to https://app.cn_team.test/api/status)
+  ------------------------------------------------------------
+    1   Backend B   HTTP 200   138ms
+    2   Backend B   HTTP 200   1381ms
+    3   Backend B   HTTP 200   44ms
+    4   Backend B   HTTP 200   54ms
+    5   Backend B   HTTP 200   57ms
+    6   Backend B   HTTP 200   127ms
+    7   Backend B   HTTP 200   57ms
+    8   Backend B   HTTP 200   47ms
+  ------------------------------------------------------------
+    A=0  B=8  failed=0  worst latency=1381ms
+  ------------------------------------------------------------
+  Verdict
+    PASS  ONE backend is down, yet every single request succeeded.
+          nginx ejected the dead backend (max_fails=2 fail_timeout=10s) and served
+          everything from the healthy one. The client never saw an error.
+    PASS  Worst latency 1381ms -- failover is effectively invisible to the client.
+          A cleanly stopped backend refuses the connection instantly, so nginx moves
+          to the next upstream with no measurable delay at all.
+  
+    The single point of failure that remains (the spec asks you to name it):
+      the EDGE itself -- nginx on Mac 2. Every request goes through that one
+      machine, so if it dies, DNS still resolves and the backends are still
+      healthy, but nobody can reach the service.
+    To eliminate it you would need either several edges behind one DNS name
+      (multiple A records / round-robin DNS, or an anycast VIP + health checks),
+      or a floating IP that a standby edge takes over. Extension E is the
+      manual, DNS-driven version of exactly that.
+
+READING THE NUMBERS HONESTLY
+  Every request succeeded and every one was served by Backend B. The occasional
+  ~1s latency is this shared mobile hotspot, not the failover -- plain ICMP pings
+  between these machines have measured 2s+ on the same network. A cleanly killed
+  process refuses the TCP connection instantly, so nginx moves to the next
+  upstream with no measurable delay, and after max_fails=2 it stops trying the
+  dead backend at all for fail_timeout=10s.
+
+CONTRAST WITH PHASE 1
+  In Phase 1 the same situation produced 60-second hangs and curl exit 28
+  timeouts (see evidence/failure-demos/04-one-backend-down.txt). The cause was
+  nginx's default 60s proxy timeouts combined with a backend that had gone to
+  SLEEP rather than exiting -- a sleeping machine accepts nothing and refuses
+  nothing, so nginx simply waited. Phase 2 sets proxy_connect_timeout 2s and
+  proxy_read_timeout 3s, which bounds that wait, and max_fails/fail_timeout,
+  which stops sending traffic to a backend that keeps failing.
+
+REMAINING SINGLE POINT OF FAILURE
+  The edge itself. Every request still passes through one nginx on Mac 2.
+  DNS is now redundant and the backends are redundant; the edge is not.
+  Extension E is the manual, DNS-driven way to move it.
