@@ -1,0 +1,33 @@
+=== PHASE 2 Extension A — backup DNS resolver status, 2026-11-22 ===
+=== Verified from Mac 1 (Naman, 10.7.20.236) ===
+
+WORKING
+  $ dig @10.7.20.236 app.cn_team.test +short     # primary, Mac 1
+    10.7.11.169
+  Mac 1's resolver is reachable across the LAN -- confirmed independently from
+  Mac 3, which got 10.7.11.169 when querying @10.7.20.236.
+
+  On Mac 3 itself, the backup resolver answers correctly:
+    $ dig @127.0.0.1 app.cn_team.test            # run on Mac 3
+      app.cn_team.test.   30   IN   A   10.7.11.169
+      ;; SERVER: 127.0.0.1#53(127.0.0.1)
+    Identical record and identical TTL to the primary -- the two resolvers agree,
+    which is the property that makes failover safe rather than dangerous.
+
+BLOCKED
+  $ dig @10.7.25.47 app.cn_team.test +short      # backup, Mac 3, from Mac 1
+    ;; connection timed out; no servers could be reached
+
+  Mac 3's dnsmasq serves its own loopback but is unreachable from the LAN.
+  Its Backend A on TCP 3001 IS reachable from Mac 1, so the host and the
+  network are fine -- only this one service is being filtered.
+
+  Cause: Mac 3 is an MDM-managed machine. Attempting to allow dnsmasq through
+  the macOS Application Firewall returns:
+      Firewall settings cannot be modified from command line on managed Mac computers.
+  node was allowed earlier through the GUI prompt, which is why port 3001 works
+  while port 53 does not.
+
+  Note the diagnostic value: REFUSED would mean nothing is listening; a TIMEOUT
+  means packets are being dropped by a filter. dnsmasq is listening -- proven on
+  loopback -- so the timeout isolates the fault to the firewall, not the service.

@@ -1,0 +1,41 @@
+=== PHASE 2 Extension F — a real fault found and diagnosed during setup ===
+=== Mac 3 (Hemanth, 10.7.25.47), 2026-11-22 ===
+
+SYMPTOM
+  'sudo brew services restart dnsmasq' reported:
+      ==> Successfully started `dnsmasq` (label: sh.brew.dnsmasq)
+  ...yet 'dig @127.0.0.1 app.cn_team.test' timed out on the machine's OWN loopback.
+
+DIAGNOSIS, layer by layer
+  A firewall never filters loopback traffic, so a localhost timeout rules out
+  every network-layer explanation immediately. The service therefore was not
+  actually serving, despite the service manager reporting success.
+
+  brew services hides a daemon's stderr. Running dnsmasq in the FOREGROUND
+  exposed the real error in one line:
+
+      $ sudo /opt/homebrew/opt/dnsmasq/sbin/dnsmasq --no-daemon -C /opt/homebrew/etc/dnsmasq.conf
+      dnsmasq: failed to create listening socket for 10.7.20.9: Can't assign requested address
+
+ROOT CAUSE
+  listen-address held 10.7.20.9 -- this machine's IP from 4 October. On the
+  shared hotspot it had since been reassigned to 10.7.25.47. A process cannot
+  bind an address the machine does not own, so dnsmasq exited immediately.
+  The stale value came from a git pull taken before the IP table was updated.
+
+FIX
+  git pull, re-copy the regenerated config, restart:
+      listen-address=127.0.0.1,10.7.25.47
+  dig @127.0.0.1 app.cn_team.test then returned:
+      app.cn_team.test.   30   IN   A   10.7.11.169
+
+WHAT THIS DEMONSTRATES
+  1. 'Service started' means the process was launched, not that it is working.
+  2. A localhost failure eliminates the whole network stack as a suspect.
+  3. Daemon managers swallow stderr; run the binary in the foreground to see it.
+  4. This is exactly why config/ips.env + scripts/set-ips.sh exist -- one IP
+     table regenerates every config. The same stale-IP class of fault broke
+     this project twice during Phase 1.
+
+Screenshots: 01-stale-ip-dnsmasq-bind-failure.png (the error),
+             ../backup-dns/02-mac3-backup-dns-answering-ttl30.png (after the fix)
