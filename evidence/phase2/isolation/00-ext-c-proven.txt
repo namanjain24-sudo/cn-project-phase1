@@ -1,0 +1,57 @@
+=== PHASE 2 Extension C — SERVICE ISOLATION PROVEN — 2026-11-22 ===
+=== Tested from Mac 1 (Naman, 10.7.20.236) ===
+
+Mac 1 is the honest tester here: it is neither the edge nor a backend, so it
+has no privileged path to ports 3001/3002.
+
+Rules loaded on Mac 3 and Mac 4 by ./firewall/enable-isolation.sh:
+    pass  in quick inet proto tcp from 127.0.0.1   to any port = 3001
+    pass  in quick inet proto tcp from 127.0.0.1   to any port = 3002
+    pass  in quick inet proto tcp from 10.7.11.169 to any port = 3001
+    pass  in quick inet proto tcp from 10.7.11.169 to any port = 3002
+    block drop in quick proto tcp from any to any port = 3001
+    block drop in quick proto tcp from any to any port = 3002
+  10.7.11.169 is Mac 2, the edge. Rule ORDER matters: 'quick' means first
+  match wins, so the pass rules must precede the block rules. Reversed, the
+  block would win and nginx itself would be locked out along with everyone else.
+
+$ ./scripts/test-isolation.sh
+  Extension C -- backend isolation, tested from Namans-MacBook-Pro (10.7.20.236)
+  ------------------------------------------------------------
+  1. Try to reach the backends DIRECTLY (this must FAIL)
+    PASS  Backend A  http://10.7.25.47:3001 -> connection TIMED OUT after 4s  (packets silently dropped by pf)
+    PASS  Backend B  http://10.7.21.130:3002 -> connection TIMED OUT after 4s  (packets silently dropped by pf)
+  ------------------------------------------------------------
+  2. Reach the SAME service through the edge (this must still WORK)
+    PASS  https://app.cn_team.test/api/status -> {"backend":"B","status":"ok"}
+          The edge can reach the backends; this client cannot. That is the whole point.
+  ------------------------------------------------------------
+  Verdict
+    PASS  ISOLATION PROVEN: backends unreachable directly, service reachable via edge.
+  
+    What this models in the real world: backends in a private subnet / security
+    group that only accepts traffic from the load balancer. The app servers have
+    no public exposure at all; the edge is the only door.
+
+TIMEOUT vs REFUSED -- the detail worth stating in the viva
+  These probes TIME OUT, they are not refused. We used 'block drop', which
+  discards the packet silently, so the client waits and gives up. 'block
+  return' would have sent a TCP RST and the client would have seen
+  'connection refused' instantly.
+    refused = the host is up and nothing is listening on that port
+    timeout = something is filtering the packets
+  Earlier today the SAME probe to Backend A returned 'refused' when the node
+  process had been killed. Same port, same host, different symptom, different
+  cause -- that distinction is what makes the Extension F diagnosis work.
+
+ROLLBACK
+  ./firewall/disable-isolation.sh restores the stock macOS ruleset and the
+  original pf enabled/disabled state. The pre-change state was snapshotted to
+  firewall/rollback/rules-before.txt before anything was loaded.
+  Recorded at snapshot time: Mac 3 pf was already Enabled; Mac 4 pf was Disabled.
+
+NOTE ON THE MANAGED MACHINE
+  Mac 3 is MDM-managed and refused changes to the macOS Application Firewall
+  from the command line. pf is a different subsystem and was NOT restricted,
+  so Extension C worked there regardless. Two separate firewalls on macOS:
+  socketfilterfw (per-application) and pf (per-packet). This extension uses pf.
