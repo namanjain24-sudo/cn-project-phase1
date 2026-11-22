@@ -1,11 +1,20 @@
-# Private Network Service Platform — Phase 1
+# Private Network Service Platform — Phase 1 + Phase 2
 
 Computer Networks course project. 4 machines, 4 roles, one private service reachable over
 HTTPS through a private DNS name, load-balanced across two backends, with full packet
 evidence of DNS → TCP → TLS → HTTP.
 
-**This repo currently covers Phase 1 only** ("Build & Observe"). Phase 2 ("Harden &
-Recover") is not started — do that after Phase 1 is demoed and passed.
+**Phase 1 ("Build & Observe") is complete and Phase 2 ("Harden & Recover") is
+built.** Phase 2 extends the same network — nothing was rebuilt. Start here:
+
+| If you want to... | Read |
+|---|---|
+| Run the demo tomorrow | **[`docs/phase2-runbook.md`](docs/phase2-runbook.md)** — start at §0 |
+| Prepare for the individual viva | **[`docs/phase2-viva.md`](docs/phase2-viva.md)** |
+| Hand in the Phase 2 report | **[`docs/phase2-report.md`](docs/phase2-report.md)** |
+| Know what was measured and proven | [`evidence/phase2/00-preflight-config-check-2026-11-22.txt`](evidence/phase2/00-preflight-config-check-2026-11-22.txt) |
+| Fix an IP that changed | edit [`config/ips.env`](config/ips.env), run `./scripts/set-ips.sh` |
+| Work out why something is broken | `./scripts/diagnose.sh` |
 
 Core principle from the spec: *the application stays simple, the network is the project.*
 Don't over-engineer the backends — the marks are for the networking, not the code.
@@ -29,10 +38,10 @@ the one-line fix is: `grep -rl 'cn_team\.test' . --exclude-dir=.git | xargs sed 
 
 | Machine | Person | Role | Runs | Folder | Represents |
 |---|---|---|---|---|---|
-| **Mac 1** | Person A | Private DNS Server + Test Client | dnsmasq | [`mac1-dns/`](mac1-dns/) | Managed DNS (Route 53) |
-| **Mac 2** | Person B | Edge / Reverse Proxy + Load Balancer + TLS | nginx | [`mac2-edge/`](mac2-edge/) | Cloud LB / CDN edge |
-| **Mac 3** | Person C | Backend Server A | Node.js on :3001 | [`mac3-backend-a/`](mac3-backend-a/) | App server instance A |
-| **Mac 4** | Person D | Backend Server B + Test Client | Node.js on :3002 | [`mac4-backend-b/`](mac4-backend-b/) | App server instance B |
+| **Mac 1** | Naman | Private DNS Server + Test Client | dnsmasq | [`mac1-dns/`](mac1-dns/) | Managed DNS (Route 53) |
+| **Mac 2** | Harsha | Edge / Reverse Proxy + Load Balancer + TLS | nginx | [`mac2-edge/`](mac2-edge/) | Cloud LB / CDN edge |
+| **Mac 3** | Hemanth | Backend Server A | Node.js on :3001 | [`mac3-backend-a/`](mac3-backend-a/) | App server instance A |
+| **Mac 4** | Akshay | Backend Server B + Test Client | Node.js on :3002 | [`mac4-backend-b/`](mac4-backend-b/) | App server instance B |
 
 Request flow: `Client → DNS query (Mac 1) → HTTPS (Mac 2 / nginx) → Backend A (Mac 3) or Backend B (Mac 4)`
 
@@ -41,6 +50,17 @@ folder. `docs/` and `scripts/` are shared — read them together as a team befor
 because the video is graded on whether you understand the *whole* system, not just your own
 machine — see §7 below, **there's no live viva for Phase 1, the deliverable is a recorded
 video**, and each person needs to speak on camera about their own part.
+
+## 1b. Phase 2 roles (each person owns one extension)
+
+| Extension | Spec | Owner | Machine | Files |
+|---|---|---|---|---|
+| **A** Backup DNS resolver | §7.1 A | Hemanth | Mac 3 | [`backup-dns/`](backup-dns/) |
+| **B** DNS TTL + record change | §7.1 B | Naman | Mac 1 | [`mac1-dns/dnsmasq-phase2.conf`](mac1-dns/), [`scripts/test-ttl.sh`](scripts/test-ttl.sh) |
+| **C** Service isolation (firewall) | §7.1 C | Hemanth + Akshay | Mac 3, Mac 4 | [`firewall/`](firewall/) |
+| **D** HA failover | §7.1 D | Harsha | Mac 2 | [`mac2-edge/nginx-phase2.conf`](mac2-edge/) |
+| **E** Edge migration via DNS | §7.1 E | Akshay + Naman | Mac 4, Mac 1 | [`standby-edge/`](standby-edge/), [`scripts/dns-cutover.sh`](scripts/dns-cutover.sh) |
+| **F** Troubleshooting challenge | §7.1 F | everyone | any | [`scripts/diagnose.sh`](scripts/diagnose.sh) |
 
 ## 2. Order of operations (do these in sequence, as a team)
 
@@ -101,12 +121,19 @@ CN_project/
 │   ├── failure-demos.md       ← §6.3 mandatory failure scenarios, exact commands
 │   ├── evidence-checklist.md  ← Task G + Section 9 deliverables checklist
 │   └── video-script.md        ← Phase 1 video shot-list & script (the actual submission)
-├── mac1-dns/                  ← Person A: dnsmasq config + setup commands
-├── mac2-edge/                 ← Person B: nginx config, TLS cert script, setup commands
-├── mac3-backend-a/            ← Person C: backend A source + setup commands
-├── mac4-backend-b/            ← Person D: backend B source + test-client commands
-├── scripts/                   ← shared test scripts, run from any client machine
-└── evidence/                  ← screenshots, curl output, Wireshark captures go here
+│   ├── phase2-runbook.md      ← PHASE 2: the demo-day sequence (open this on the day)
+│   ├── phase2-report.md       ← PHASE 2: the Final Report deliverable
+│   └── phase2-viva.md         ← PHASE 2: individual viva prep
+├── config/ips.env             ← SINGLE SOURCE OF TRUTH for every IP
+├── mac1-dns/                  ← Naman: dnsmasq (Phase 1 + Phase 2 configs)
+├── mac2-edge/                 ← Harsha: nginx, TLS cert script (Phase 1 + Phase 2 configs)
+├── mac3-backend-a/            ← Hemanth: backend A source
+├── mac4-backend-b/            ← Akshay: backend B source
+├── backup-dns/                ← PHASE 2 Ext A: second resolver, runs on Mac 3
+├── standby-edge/              ← PHASE 2 Ext E: standby nginx, runs on Mac 4
+├── firewall/                  ← PHASE 2 Ext C: pf rules + enable/disable/rollback
+├── scripts/                   ← shared test + diagnosis scripts, run from any machine
+└── evidence/                  ← Phase 1 evidence + evidence/phase2/
 ```
 
 ## 6. Marks this repo is aimed at (Review 1, Phase 1 — 50 marks per the general spec)

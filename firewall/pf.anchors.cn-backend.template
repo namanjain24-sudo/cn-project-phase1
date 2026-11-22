@@ -1,0 +1,32 @@
+# =============================================================================
+# PHASE 2 Extension C — SERVICE ISOLATION (pf rules)
+# Install on Mac 3 (Backend A) and Mac 4 (Backend B) as
+#     /etc/pf.anchors/cn-backend
+#
+# Goal from the spec: only Mac 2 (the edge) may reach backend ports 3001/3002.
+# A client machine must NOT be able to connect to them directly.
+#
+# pf evaluates rules top-to-bottom and "quick" means FIRST MATCH WINS, so the
+# pass rules MUST come before the block rules. Getting this order wrong is the
+# classic pf mistake -- the block would win and even nginx would be locked out.
+# =============================================================================
+
+# 1) Always allow the machine to talk to its own backend (localhost tests,
+#    `curl http://localhost:3001/...`). Without this, the backend owner can no
+#    longer test their own service.
+pass in quick proto tcp from 127.0.0.1 to any port 3001
+pass in quick proto tcp from 127.0.0.1 to any port 3002
+
+# 2) Allow ONLY the edge machine (Mac 2) in. This is the whole point of the
+#    extension: the backends become reachable exclusively through the edge.
+pass in quick proto tcp from <MAC2_IP> to any port 3001
+pass in quick proto tcp from <MAC2_IP> to any port 3002
+
+# 3) Everyone else is dropped.
+#    "block drop" discards silently (client sees a TIMEOUT), as opposed to
+#    "block return" which sends RST (client sees CONNECTION REFUSED).
+#    We deliberately use drop, because a silent drop is what a real firewall
+#    does -- and the timeout-vs-refused distinction is a great viva question:
+#    refused = nothing listening; timeout = something is filtering you.
+block drop in quick proto tcp from any to any port 3001
+block drop in quick proto tcp from any to any port 3002

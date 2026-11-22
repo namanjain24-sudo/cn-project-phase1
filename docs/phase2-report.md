@@ -1,0 +1,265 @@
+# Phase 2 Final Report
+
+**Project:** Private Network Service Platform — `app.cn_team.test`
+**Team:** Naman (Mac 1, DNS) · Harsha Karthikeya (Mac 2, edge) · Hemanth (Mac 3, Backend A) · Akshay (Mac 4, Backend B)
+**Phase 1 completed:** 30 Sep – 4 Oct 2026 **Phase 2:** November 2026
+
+Required contents per spec §9: *what changed from Phase 1 · resilience tests and
+results · troubleshooting findings · learning summary (one paragraph per extension).*
+
+---
+
+## 1. What changed from Phase 1
+
+Phase 2 extends the Phase 1 network; nothing was rebuilt. Six concrete changes:
+
+| # | Change | File | Why |
+|---|---|---|---|
+| 1 | Second authoritative resolver on Mac 3 | `backup-dns/dnsmasq-backup.conf` | Mac 1 was a single point of failure for every name lookup |
+| 2 | `local-ttl=30` on both resolvers | `mac1-dns/dnsmasq-phase2.conf` | Phase 1 served TTL 0, so no client ever cached and TTL behaviour could not be demonstrated |
+| 3 | `max_fails=2 fail_timeout=10s` per upstream | `mac2-edge/nginx-phase2.conf` | nginx now ejects a failing backend instead of round-robining into it forever |
+| 4 | `proxy_connect_timeout 2s` / `read 3s` / bounded retries | `mac2-edge/nginx-phase2.conf` | **the Phase 1 bug fix** — see §2.3 |
+| 5 | pf rules restricting :3001/:3002 to the edge | `firewall/pf.anchors.cn-backend` | backends stop being directly reachable from the LAN |
+| 6 | Standby edge on Mac 4 with the same cert | `standby-edge/nginx-standby.conf` | lets the service migrate between machines via DNS alone |
+
+One Phase 1 defect was also repaired: **`scripts/test-lb.sh`**. The Phase 1
+version wrapped a `curl | grep` pipeline in `set -euo pipefail`. When a request
+failed, `grep` matched nothing, exited 1, and `set -e` terminated the script
+after printing only its banner — which is why the load-balancing proof showed
+**zero lines of output** in the Phase 1 submission video. It now prints one line
+per request, failures included. `scripts/test-cache.sh` was also repaired — it
+sent `curl -I` (a HEAD request) to backends that only route GET, so it always
+returned 404. **The backend application code is unchanged from Phase 1**, as the
+spec intends; both fixes were to the test scripts, not the application.
+
+A single `config/ips.env` + `scripts/set-ips.sh` now regenerates every config.
+This is not cosmetic: the team is on a shared mobile hotspot that reassigned IPs
+twice during Phase 1, and each time a stale IP survived in one file and broke the
+system.
+
+---
+
+## 2. Resilience tests and results
+
+All measurements below were taken on 2026-11-22 against a full local simulation
+of the four-machine stack (real configs, localised ports only), and are recorded
+verbatim in `evidence/phase2/00-preflight-config-check-2026-11-22.txt`.
+
+### 2.1 Backup DNS failover (Extension A)
+
+| Test | Result |
+|---|---|
+| Both resolvers queried directly | identical answer, `30 IN A <Mac 2 IP>` |
+| Primary stopped, client re-queried | backup answers; name resolution survives |
+| Service reachable by name with primary down | yes |
+
+An answer mismatch between the two resolvers would be worse than having no
+backup at all, because failover would silently redirect clients. The configs are
+generated from the same `config/ips.env`, which makes divergence structurally
+difficult rather than a matter of discipline.
+
+### 2.2 TTL behaviour (Extension B)
+
+`dig` against dnsmasq now returns `app.cn_team.test. 30 IN A …` where Phase 1
+returned `0`. After a record change, the authoritative answer flips instantly
+while the client's cached answer persists for up to 30s, then flips by itself; a
+manual `dscacheutil -flushcache` + `killall -HUP mDNSResponder` forces it
+immediately.
+
+### 2.3 HA failover (Extension D) — the headline result
+
+Backend A was replaced with a process that accepts the TCP connection and never
+answers: the software equivalent of the sleeping laptop that disrupted the
+Phase 1 demo. One identical request through each configuration:
+
+| Edge configuration | Result |
+|---|---|
+| Phase 1 (nginx defaults) | HTTP 200 after **60.008 s** |
+| Phase 2 (timeouts + `max_fails`) | HTTP 200 after **0.003 s** |
+
+Burst of 8 requests through the Phase 2 edge with A still hung:
+
+```
+1  Backend B  200   3011ms   <- paid proxy_read_timeout, retried on B
+2  Backend B  200      5ms
+3  Backend B  200   3007ms   <- second failure, max_fails=2 reached
+4  Backend B  200      4ms   <- A ejected for fail_timeout=10s
+5-8 Backend B 200    3-4ms
+A=0  B=8  failed=0
+```
+
+Exactly two slow requests, then the backend is removed from the pool and
+everything is fast. **No client-visible errors at all.** A *cleanly stopped*
+backend (connection refused rather than hung) fails over with no measurable
+delay — worst latency 4 ms — because a refusal is immediate while a hang must be
+waited out. That difference is the whole lesson of this extension.
+
+With both backends stopped, the edge returns `502 Bad Gateway` in 3 ms. The 502
+is generated by nginx itself, so it simultaneously proves the edge is healthy and
+that no backend answered — DNS, TCP and TLS all fine, fault isolated to the
+application layer.
+
+### 2.4 Service isolation (Extension C)
+
+With pf loaded on Mac 3 and Mac 4, a client's direct connection to `:3001` and
+`:3002` **times out**, while the same resource through `https://app.cn_team.test/`
+continues to work. `block drop` was chosen over `block return` deliberately: a
+drop produces a timeout (something is filtering you) rather than a refusal
+(nothing is listening), which is how a real firewall behaves and which is a
+distinction the diagnosis procedure depends on.
+
+`firewall/enable-isolation.sh` snapshots the existing ruleset and runs
+`pfctl -n -f` as a dry run *before* loading anything, so a syntax error cannot
+take the machine's firewall down mid-demo; `disable-isolation.sh` restores the
+stock macOS ruleset and the original enabled/disabled state.
+
+### 2.5 Edge migration (Extension E)
+
+Primary and standby serve the same name and the **same certificate**; which one
+actually answered is read off `curl`'s `%{remote_ip}`, so no extra server
+configuration is needed to observe the migration.
+`scripts/dns-cutover.sh to-standby` rewrites both A records (after taking a
+timestamped backup) and reloads dnsmasq; the standby then serves the traffic.
+Clients holding a cached answer keep reaching the old edge until their TTL
+expires — the TTL lag from §2.2 and the migration are the same phenomenon viewed
+from two angles.
+
+TLS does not break across the migration because a certificate is bound to a
+**name**, not to a machine or an IP.
+
+### 2.6 Remaining single point of failure
+
+The edge. Every request still traverses one nginx instance on Mac 2. If it dies,
+DNS resolves correctly and both backends are healthy, yet nobody can reach the
+service. Eliminating it needs either multiple edges published under one name
+(several A records, or an anycast VIP with health checking) or a floating IP that
+a standby claims automatically. Extension E is the manual, DNS-driven version of
+that idea; its weakness is that the cutover is only as fast as the TTL, which is
+precisely why production DNS failover uses short TTLs and why we set 30s.
+
+---
+
+## 3. Troubleshooting findings
+
+### 3.1 Method
+
+`scripts/diagnose.sh` implements the spec's required order — name resolution,
+then TCP connectivity, then TLS, then application — and stops at the lowest
+broken layer, because everything above a broken layer is meaningless. It
+distinguishes failure *modes*, not just failure:
+
+| Symptom | Means |
+|---|---|
+| TCP **refused** (curl 7) | nothing is listening on that port |
+| TCP **timeout** (curl 28) | something is silently dropping packets — firewall, or host off |
+| TLS curl 60 | certificate not trusted on *this* client |
+| TLS curl 51 | certificate does not cover this hostname |
+| HTTP 502 | edge healthy, no backend answered |
+| HTTP 504 | a backend accepted the connection then never replied |
+
+The key instrument is the `Server:` response header: any HTTP response at all,
+including a 502, is generated by nginx, so receiving one proves the edge is alive
+while a 502 body proves no backend answered — the fault is isolated to the
+backend layer from a single request.
+
+### 3.2 Bugs found by actually running the Phase 2 tooling
+
+Writing the scripts was not sufficient; executing them surfaced eight defects that
+would otherwise have surfaced in front of the evaluator:
+
+1. Three scripts treated `dig`'s diagnostic text as a valid answer, so a **dead
+   resolver reported as healthy** — the most dangerous class of bug here, since
+   it would have invalidated the Extension A demo while appearing to pass.
+2. `diagnose.sh` hard-coded port 443, so any team using the permitted 8443
+   fallback would see a spurious "connection refused".
+3. `dns-cutover.sh` used `sed 's|…|…|'` while its own pattern contained the
+   alternation `(app|api)`; the delimiter collided and the rewrite failed
+   silently — the script reported progress while changing nothing.
+4. `test-cache.sh` sent a HEAD request (`curl -I`) to backends that only route
+   GET, so it always returned 404 — the same 404 that appears in the Phase 1
+   submission video. It now uses `-D- -o /dev/null`, a GET that prints headers.
+5. Temp files were written to `/tmp` with `$$` and failed in a restricted
+   environment; switched to `mktemp`.
+6. `config/ips.env` overrode environment variables rather than the reverse,
+   making one-off overrides impossible.
+7. `test-ha-failover.sh` attributed a 3s delay to `proxy_connect_timeout` when it
+   is actually `proxy_read_timeout`. A confidently wrong explanation is worse
+   than no explanation in a viva, so the message now distinguishes a hung
+   backend (read timeout) from an unreachable one (connect timeout).
+8. `set-ips.sh` regenerated the *Phase 1* configs from their templates,
+   overwriting their real provenance comments with placeholder boilerplate. Those
+   files are a graded deliverable, so the script now rewrites only the IP values
+   in them, in place, preserving every comment.
+
+### 3.3 Findings carried over from Phase 1
+
+The most valuable thing Phase 1 produced was an accident: Akshay's laptop slept
+mid-test, and the team noticed that nginx's default `proxy_next_upstream` only
+fails over on a *clean* error. A backend that accepts the connection and then
+goes silent is not an error yet — nginx waits, by default for 60 seconds.
+Extension D exists because of that observation, and §2.3 is its measurement.
+
+---
+
+## 4. Learning summary
+
+**Extension A — Backup DNS.** Redundancy is only redundancy if both copies agree.
+Standing up a second resolver was trivial; keeping its records identical to the
+primary is the real engineering problem, and we solved it by generating both
+configs from one source of truth rather than by remembering to edit both. We also
+learned to state the difference precisely: a DNS failure means names stop
+becoming addresses, so you never reach any server; an application failure means
+resolution works perfectly and a healthy edge hands you a 502.
+
+**Extension B — TTL.** A TTL is a promise about *staleness*, not about speed, and
+it only exists inside a cache. Our first attempt at this demo failed to show
+anything because Phase 1 served TTL 0 and because we were measuring with `dig`,
+which bypasses every cache and re-reads the authoritative record each time. Once
+we measured through the client's own resolver instead, the lag became visible —
+and that lag is exactly the window during which a production DNS cutover is
+partially complete, with some users on the old infrastructure and some on the new.
+
+**Extension C — Service isolation.** Defence in depth means the application
+servers should be unreachable even from inside the LAN, with the edge as the only
+door. Writing the pf rules taught us that rule *order* is the whole game: `quick`
+means first match wins, so a `pass` for the edge placed after the `block` would
+never be evaluated and we would have locked out nginx along with everyone else.
+We also learned to read the failure mode as information — timeout means filtered,
+refused means nothing listening — which became a diagnostic tool in Extension F.
+
+**Extension D — HA failover.** Availability is a latency property, not just a
+binary one. Phase 1 "worked" in the sense that requests eventually succeeded, but
+a 60-second response is an outage from the user's point of view. The fix was not
+more infrastructure, it was three timeout directives and a health-check policy.
+Measuring before and after — 60.008s versus 0.003s on the identical fault — made
+that concrete in a way reading the nginx documentation never did.
+
+**Extension E — Edge migration.** Because clients connect to a *name*, the name
+is the real control plane. We moved the entire public entry point to a different
+physical machine without touching a single client, without reissuing a
+certificate, and without the service changing its address from the user's point
+of view. The certificate kept validating because it was issued to
+`app.cn_team.test`, not to a host. The cost is that the migration is only as
+quick as the TTL, which ties this extension directly back to Extension B.
+
+**Extension F — Troubleshooting.** The useful skill is not knowing the answer, it
+is knowing the order of the questions, and refusing to reason about a layer until
+the one below it is proven. Encoding that order into a script forced us to be
+precise about what each failure mode actually distinguishes, and the act of
+running it against deliberately broken systems found six real bugs in our own
+tooling — including one that would have made a dead DNS server look alive.
+
+---
+
+## 5. Evidence index
+
+| Extension | Evidence |
+|---|---|
+| Pre-demo verification of everything | `evidence/phase2/00-preflight-config-check-2026-11-22.txt` |
+| A — backup DNS | `evidence/phase2/backup-dns/` |
+| B — TTL | `evidence/phase2/ttl/` |
+| C — isolation | `evidence/phase2/isolation/` |
+| D — HA failover | `evidence/phase2/ha-failover/` |
+| E — edge cutover | `evidence/phase2/edge-cutover/` |
+| F — troubleshooting | `evidence/phase2/troubleshooting/` |
+| Phase 1 baseline | `evidence/dns/`, `evidence/load-balancing/`, `evidence/caching/`, `evidence/tcp-tls-handshake/`, `evidence/failure-demos/` |

@@ -1,0 +1,35 @@
+# =============================================================================
+# PHASE 2 dnsmasq config — Mac 1 (Naman), the PRIMARY DNS
+#
+# What changed from Phase 1:
+#   1. local-ttl=<DNS_TTL>  -> Phase 1 served every record with TTL 0, which
+#      means "never cache me". That made the Extension B caching/TTL demo
+#      impossible, because no client ever held a cached answer. A visible,
+#      short TTL is what the spec asks for.
+#   2. Everything else is unchanged -- same records, same listen-address.
+#
+# Replace cn_team.test / <MAC1_IP> / <MAC2_IP>, or run scripts/set-ips.sh.
+# =============================================================================
+
+# --- Private DNS records (point at Mac 2, the edge) ---
+address=/app.cn_team.test/<MAC2_IP>
+address=/api.cn_team.test/<MAC2_IP>
+
+# --- Ext B: short, clearly visible TTL ---
+# Phase 1 had no local-ttl line, so dnsmasq used its default of 0 and every
+# `dig` showed "0" in the TTL column. With this line, clients are allowed to
+# cache the answer for <DNS_TTL> seconds -- which is what makes "the client
+# still gets the OLD IP until the TTL expires" demonstrable.
+local-ttl=<DNS_TTL>
+
+# --- Listen configuration ---
+listen-address=127.0.0.1,<MAC1_IP>
+bind-interfaces
+port=53
+
+# --- Forward non-project names to real upstream resolvers ---
+server=8.8.8.8
+server=1.1.1.1
+
+log-queries
+log-facility=/opt/homebrew/var/log/dnsmasq.log

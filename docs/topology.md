@@ -103,3 +103,49 @@ icon with all 4 laptops hanging off it), then overlay the request-flow arrows ab
 Redraw this (by hand, in draw.io, Excalidraw, or similar) with your real IPs filled in for
 the Architecture Document deliverable — a text diagram is fine for this repo, but bring a
 clean visual one to the demo.
+
+
+---
+
+## 5. Phase 2 overlay — what each machine additionally runs
+
+Phase 2 does not change the topology; it adds redundancy to it.
+
+| Machine | Phase 1 role | Phase 2 additions |
+|---|---|---|
+| Mac 1 — Naman | primary DNS (dnsmasq :53) | short TTL (30s); runs the DNS cutover for Ext E |
+| Mac 2 — Harsha | edge / TLS / load balancer (:443) | health detection (`max_fails`) + short proxy timeouts |
+| Mac 3 — Hemanth | Backend A (:3001) | **backup DNS resolver (:53)**; pf rules isolating :3001 |
+| Mac 4 — Akshay | Backend B (:3002) | **standby edge nginx (:443)**; pf rules isolating :3002 |
+
+```
+                 ┌──────────────────────┐        ┌──────────────────────┐
+                 │ Mac 1 — PRIMARY DNS  │        │ Mac 3 — BACKUP DNS   │
+                 │ dnsmasq :53  TTL 30  │        │ dnsmasq :53  TTL 30  │
+                 └───────────┬──────────┘        └──────────┬───────────┘
+                             │   clients list BOTH, in order │
+                             └───────────────┬───────────────┘
+                                             │ (1) DNS query
+                                             ▼
+   ┌──────────┐    (2) HTTPS    ┌────────────────────────┐   ┌────────────────────────┐
+   │  Client  │ ───────────────▶│ Mac 2 — PRIMARY EDGE   │   │ Mac 4 — STANDBY EDGE   │
+   │          │◀─────────────── │ nginx :443             │   │ nginx :443 (idle until │
+   └──────────┘                 │ max_fails + timeouts   │   │ the Ext E cutover)     │
+                                └────┬──────────────┬────┘   └────────────────────────┘
+                     (3) plain HTTP  │              │   ▲ DNS record is repointed here
+                      over a SEPARATE│              │   │ by scripts/dns-cutover.sh
+                      TCP connection │              │
+                           ┌─────────▼────┐   ┌─────▼──────────┐
+                           │ Mac 3        │   │ Mac 4          │
+                           │ Backend A    │   │ Backend B      │
+                           │ :3001        │   │ :3002          │
+                           │ pf: edge only│   │ pf: edge only  │
+                           └──────────────┘   └────────────────┘
+```
+
+The pf rules (Ext C) mean the arrows marked (3) are the **only** way into :3001
+and :3002 — a client cannot draw its own arrow to a backend any more.
+
+**The remaining single point of failure is the edge**: every request still
+traverses one nginx. Extension E moves it manually via DNS; true HA would need
+several edges published under one name, or a floating IP a standby claims.

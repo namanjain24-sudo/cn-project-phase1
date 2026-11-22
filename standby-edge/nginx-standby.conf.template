@@ -1,0 +1,57 @@
+# nginx config for the STANDBY edge (Mac 4) — PHASE 2 Extension E
+#
+# Identical to the primary edge config on Mac 2, including the SAME certificate.
+# The cert is issued to the NAME app.cn_team.test, not to a machine, which is why
+# moving the service to this machine does not break TLS.
+#
+# Replace: cn_team.test, <MAC3_IP>, <MAC4_IP>   (or run scripts/set-ips.sh)
+
+upstream app_backend {
+    # Ext D — health detection. After max_fails failed attempts, nginx marks the
+    # backend dead and sends it NOTHING for fail_timeout seconds. That is the
+    # "route only to the healthy backend" the spec asks for.
+    server <MAC3_IP>:3001 max_fails=2 fail_timeout=10s;   # Backend A
+    server <MAC4_IP>:3002 max_fails=2 fail_timeout=10s;   # Backend B — this machine
+}
+
+# Redirect plain HTTP to HTTPS
+server {
+    listen 80;
+    # listen 8080;   # use this instead if 80 is blocked on your machine
+    server_name app.cn_team.test api.cn_team.test;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    # listen 8443 ssl;   # use this instead if 443 is blocked on your machine
+    http2 on;
+
+    server_name app.cn_team.test api.cn_team.test;
+
+    ssl_certificate     /opt/homebrew/etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /opt/homebrew/etc/nginx/certs/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        proxy_pass http://app_backend;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Ext D — Phase 1 used nginx's defaults (60s), which is why a backend on
+        # a SLEEPING laptop made every other request hang for a minute instead of
+        # failing over. connect = the TCP handshake (machine off/asleep/filtered);
+        # read = waiting for a reply from a backend that did accept the connection
+        # (hung process). Phase 1's incident was the second kind.
+        proxy_connect_timeout 2s;
+        proxy_send_timeout    3s;
+        proxy_read_timeout    3s;
+
+        proxy_next_upstream error timeout invalid_header http_502 http_503 http_504;
+        proxy_next_upstream_tries   2;
+        proxy_next_upstream_timeout 6s;
+    }
+}

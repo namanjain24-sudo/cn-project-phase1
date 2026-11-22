@@ -68,3 +68,42 @@ anyone asks follow-up questions later).
 If your traffic doesn't show up on `en0`, check you selected the right interface (Wi-Fi vs
 loopback) — Wireshark lists all interfaces with live packet counts, pick the one that's
 actually moving.
+
+
+---
+
+## Phase 2 evidence checklist
+
+Folders already exist under `evidence/phase2/`. Capture each as a `.txt`
+(redirect the script output) plus a screenshot where it is visual.
+
+- [x] **Pre-demo verification of every config and script** —
+      `evidence/phase2/00-preflight-config-check-2026-11-22.txt` (done 2026-11-22)
+- [ ] **Ext A — backup DNS**: `./scripts/test-dns-failover.sh` before and after
+      stopping dnsmasq on Mac 1 → `evidence/phase2/backup-dns/`
+- [ ] **Ext B — TTL**: `dig` showing `30` (not `0`), plus `test-ttl.sh watch`
+      output across a record change → `evidence/phase2/ttl/`
+- [ ] **Ext C — isolation**: `./scripts/test-isolation.sh` from a client showing
+      direct backend timeouts and the edge still working, plus
+      `sudo pfctl -a cn-backend -s rules` → `evidence/phase2/isolation/`
+- [ ] **Ext D — HA failover**: `./scripts/test-ha-failover.sh` with one backend
+      stopped, with latencies visible → `evidence/phase2/ha-failover/`
+- [ ] **Ext E — cutover**: `./scripts/test-edge-cutover.sh` output showing
+      `resolved` and `served-by` moving from Mac 2's IP to Mac 4's IP →
+      `evidence/phase2/edge-cutover/`
+- [ ] **Ext F — troubleshooting**: `./scripts/diagnose.sh` output for the
+      faculty-injected fault, plus what you concluded →
+      `evidence/phase2/troubleshooting/`
+
+### Fix the Wireshark gap before the demo
+
+The saved Phase 1 capture was filtered `ip.addr==<mac2> and tcp.port==443`,
+which **excludes the DNS packets** (DNS is UDP/53 to Mac 1), yet Task G asks for
+DNS, TCP and TLS. Either re-filter the existing capture with `dns`, or take a
+fresh one using:
+
+```
+dns or tcp.port == 443
+```
+
+Do this before the slot, not while the evaluator is watching.
