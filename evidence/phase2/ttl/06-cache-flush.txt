@@ -1,0 +1,28 @@
+=== PHASE 2 Extension B — MANUAL DNS CACHE FLUSH — 2026-11-22 ===
+=== Run on Mac 1 (Naman, 10.7.20.236) ===
+
+The spec's last bullet for this extension: "Demonstrate flushing the DNS
+cache manually and observing the immediate change."
+
+$ sudo dscacheutil -flushcache && sudo killall -HUP mDNSResponder
+
+State verified immediately afterwards:
+  $ dscacheutil -q host -a name app.cn_team.test   ->  10.7.11.169
+  $ curl -s https://app.cn_team.test/api/status    ->  {"backend":"A","status":"ok"}
+  $ curl -o /dev/null -w %{remote_ip} ...          ->  10.7.11.169  (Mac 2, primary edge)
+
+WHY BOTH COMMANDS ARE NEEDED
+  dscacheutil -flushcache empties the Directory Service cache.
+  killall -HUP mDNSResponder makes the resolver daemon itself drop its
+  cached records. Running only the first one is a common mistake -- the
+  daemon keeps answering from its own memory and nothing appears to change.
+
+HOW THIS RELATES TO THE TTL WINDOW IN 04-ttl-stale-window-observed.txt
+  There, the client held a stale answer for ~11 seconds and we WAITED for it
+  to expire on its own. A flush is the manual override: it discards the entry
+  immediately so the very next lookup goes to the resolver instead of the
+  cache. Two ways to reach the same end state -- wait out the TTL, or force it.
+
+  In a production cutover you cannot flush every client's cache, which is
+  exactly why the TTL is lowered in advance of a planned migration: the TTL
+  is the only control you actually have over how long a stale answer can live.
