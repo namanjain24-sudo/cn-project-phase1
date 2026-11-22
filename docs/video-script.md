@@ -1,5 +1,11 @@
 # Phase 1 Video Submission — Shot List & Script (with exact commands)
 
+> **HISTORICAL — Phase 1 only. Do not use this for the Phase 2 demo.**
+> This was the script for the recorded Phase 1 submission. The IP addresses in
+> it are from 30 September and are all wrong now except Mac 2's. For the Phase 2
+> evaluation use [`phase2-runbook.md`](phase2-runbook.md), and for current
+> addresses see [`topology.md`](topology.md) or `config/ips.env`.
+
 **This course's Phase 1 deliverable is a recorded video, not a live viva.** That means the
 video itself has to do the job the viva would have done — so **every person must speak on
 camera and explain their own component in their own words**, not just show a terminal

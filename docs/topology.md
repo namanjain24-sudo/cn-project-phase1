@@ -33,13 +33,36 @@ keep it in this file and commit it):
 
 | Machine | Person | Role | IPv4 Address | Subnet Mask | Gateway | Interface | MAC Address |
 |---|---|---|---|---|---|---|---|
-| Mac 1 | Naman | DNS Server | 10.7.25.150 | 255.255.224.0 | 10.7.0.1 | en0 | ea:13:1a:a7:22:15 |
-| Mac 2 | Harsha Karthikeya | Edge/LB/TLS | 10.7.11.169 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c2:fb:bc |
-| Mac 3 | Hemanth | Backend A | 10.7.20.9 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c1:92:86 |
-| Mac 4 | Akshay | Backend B + Client | 10.7.21.77 | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:bd:67:24 |
+| Mac 1 | Naman | DNS Server (+ backup client) | **10.7.20.236** | 255.255.224.0 | 10.7.0.1 | en0 | ea:13:1a:a7:22:15 |
+| Mac 2 | Harsha Karthikeya | Edge / LB / TLS | **10.7.11.169** | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c2:fb:bc |
+| Mac 3 | Hemanth | Backend A + Backup DNS | **10.7.25.47** | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:c1:92:86 |
+| Mac 4 | Akshay | Backend B + Standby Edge | **10.7.21.130** | 255.255.224.0 | 10.7.0.1 | en0 | 10:9f:41:bd:67:24 |
 
-Full table confirmed by the team, last updated 2026-10-04 (IPs reassigned on hotspot
-reconnect — Mac 1, 3, 4 changed; Mac 2 stayed the same). This is a shared mobile hotspot
+**Current as of 2026-11-22**, the Phase 2 session. The live source of truth is
+[`config/ips.env`](../config/ips.env); `./scripts/set-ips.sh` regenerates every
+config from it.
+
+### IP history — this is itself a finding
+
+| Date | Mac 1 | Mac 2 | Mac 3 | Mac 4 |
+|---|---|---|---|---|
+| 2026-09-30 | 10.7.6.95 | 10.7.11.169 | 10.7.12.33 | 10.7.1.139 |
+| 2026-10-04 | 10.7.25.150 | 10.7.11.169 | 10.7.20.9 | 10.7.21.77 |
+| 2026-11-22 | 10.7.20.236 | 10.7.11.169 | 10.7.25.47 | 10.7.21.130 |
+
+Three of the four machines have been reassigned twice; only Mac 2 has kept its
+address throughout, which is lucky because the TLS certificate and the DNS
+record both point at it. MAC addresses never change — they are burned into the
+hardware — which is exactly the distinction between a Layer 2 identifier and a
+Layer 3 one, and a reasonable thing to be asked about.
+
+This churn is not a footnote. A stale IP left in one config file broke the setup
+twice during Phase 1, and again on 2026-11-22 when Mac 3's dnsmasq refused to
+start with *"failed to create listening socket for 10.7.20.9: Can't assign
+requested address"* — that address had belonged to it in October. That is why
+`config/ips.env` + `scripts/set-ips.sh` exist: one table, one command, every
+config regenerated. See
+[`evidence/phase2/troubleshooting/01-stale-ip-bind-failure.txt`](../evidence/phase2/troubleshooting/01-stale-ip-bind-failure.txt). This is a shared mobile hotspot
 (255.255.224.0 = a /19, and high ping latency was observed earlier, 200–1500ms) rather than a
 router — **IPs can and did change after a reconnect** (Mac 1's IP changed once already during
 setup). If a machine's IP changes again, re-run `ipconfig getifaddr en0` on that machine,
