@@ -1,0 +1,54 @@
+=== PHASE 2 Extension B — short, visible DNS TTL ===
+=== Mac 1 (Naman, 10.7.20.236), 2026-11-22 ===
+
+Phase 1 served every record with TTL 0 (see evidence/dns/04: "app.cn_team.test. 0 IN A"),
+so no client ever cached an answer and a TTL demo was impossible. local-ttl=30 fixes that.
+
+$ grep -v "^#" /opt/homebrew/etc/dnsmasq.conf | grep .
+  address=/app.cn_team.test/10.7.11.169
+  address=/api.cn_team.test/10.7.11.169
+  local-ttl=30
+  listen-address=127.0.0.1,10.7.20.236
+  bind-interfaces
+  port=53
+  server=8.8.8.8
+  server=1.1.1.1
+  log-queries
+  log-facility=/opt/homebrew/var/log/dnsmasq.log
+
+$ dig @127.0.0.1 app.cn_team.test
+  ; <<>> DiG 9.10.6 <<>> @127.0.0.1 app.cn_team.test
+  ; (1 server found)
+  ;; global options: +cmd
+  ;; Got answer:
+  ;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 30047
+  ;; flags: qr aa rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+  ;; OPT PSEUDOSECTION:
+  ; EDNS: version: 0, flags:; udp: 1232
+  ;; QUESTION SECTION:
+  ;app.cn_team.test.		IN	A
+  ;; ANSWER SECTION:
+  app.cn_team.test.	30	IN	A	10.7.11.169
+  ;; SERVER: 127.0.0.1#53(127.0.0.1)
+  ;; WHEN: Sun Nov 22 21:59:20 IST 2026
+
+  ^ TTL is 30, not 0. Answer is 10.7.11.169 = Mac 2 (Harsha), the nginx edge.
+
+$ dig @10.7.20.236 app.cn_team.test +short   # via the LAN IP, not localhost
+  10.7.11.169
+$ dig @10.7.20.236 api.cn_team.test +short
+  10.7.11.169
+
+  ^ proves dnsmasq is bound to the LAN interface, so the other three Macs
+    can use this machine as their resolver -- not just localhost.
+
+$ dig @8.8.8.8 app.cn_team.test
+  ;; ->>HEADER<<- opcode: QUERY, status: NXDOMAIN, id: 20618
+  ;; flags: qr rd ra ad; QUERY: 1, ANSWER: 0, AUTHORITY: 1, ADDITIONAL: 1
+  ; EDNS: version: 0, flags:; udp: 512
+
+  ^ NXDOMAIN from Google's public resolver: the domain is genuinely private
+    and only exists inside our own DNS.
+
+Screenshots: 01-dnsmasq-config-local-ttl-30.png, 02-dig-shows-ttl-30.png,
+             03-lan-ip-and-nxdomain.png
