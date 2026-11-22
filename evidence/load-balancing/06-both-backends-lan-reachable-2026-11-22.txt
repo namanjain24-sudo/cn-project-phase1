@@ -1,0 +1,34 @@
+=== Task C — both backends up and reachable across the LAN, 2026-11-22 ===
+=== Run from Mac 1 (Naman, 10.7.20.236), which is neither backend ===
+
+$ curl -s -D- http://10.7.25.47:3001/api/status      # Backend A, Mac 3 (Hemanth)
+  HTTP/1.1 200 OK
+  X-Backend: A
+  Content-Type: application/json
+  Date: Sun, 22 Nov 2026 17:08:01 GMT
+  Connection: keep-alive
+  Keep-Alive: timeout=5
+  Transfer-Encoding: chunked
+  
+  {"backend":"A","status":"ok"}
+
+$ curl -s -D- http://10.7.21.130:3002/api/status     # Backend B, Mac 4 (Akshay)
+  HTTP/1.1 200 OK
+  X-Backend: B
+  Content-Type: application/json
+  Date: Sun, 22 Nov 2026 17:08:01 GMT
+  Connection: keep-alive
+  Keep-Alive: timeout=5
+  Transfer-Encoding: chunked
+  
+  {"backend":"B","status":"ok"}
+
+Both answer from a third machine, which proves each server.js is bound to
+0.0.0.0 and not 127.0.0.1. If they were bound to loopback they would work
+locally and nginx on Mac 2 could never reach them -- a 502 whose cause is
+invisible from the edge.
+
+Each response carries its own X-Backend header, which is what makes the
+load balancing in Task D observable later.
+
+Ports in use: Backend A :3001, Backend B :3002, as fixed in the spec.
