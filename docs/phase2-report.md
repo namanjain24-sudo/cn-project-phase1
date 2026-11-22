@@ -41,17 +41,33 @@ system.
 
 ## 2. Resilience tests and results
 
-All measurements below were taken on 2026-11-22 against a full local simulation
-of the four-machine stack (real configs, localised ports only), and are recorded
-verbatim in `evidence/phase2/00-preflight-config-check-2026-11-22.txt`.
+Every extension below was run **on the real four-machine LAN on 2026-11-22**,
+with all four laptops on the shared hotspot. Raw output for each is in
+`evidence/phase2/`. A pre-flight dry run of the same configs on a single laptop
+is kept separately in `evidence/phase2/00-preflight-config-check-2026-11-22.txt`;
+where a number below comes from that dry run rather than the live LAN, it says so.
+
+Machines as tested: Mac 1 Naman 10.7.20.236 (primary DNS) · Mac 2 Harsha
+10.7.11.169 (edge) · Mac 3 Hemanth 10.7.25.47 (Backend A + backup DNS) ·
+Mac 4 Akshay 10.7.21.130 (Backend B + standby edge).
 
 ### 2.1 Backup DNS failover (Extension A)
 
-| Test | Result |
+| Test | Result (live) |
 |---|---|
-| Both resolvers queried directly | identical answer, `30 IN A <Mac 2 IP>` |
-| Primary stopped, client re-queried | backup answers; name resolution survives |
-| Service reachable by name with primary down | yes |
+| Both resolvers queried directly | identical: `app.cn_team.test. 30 IN A 10.7.11.169` from both |
+| Primary stopped (`brew services stop dnsmasq` on Mac 1) | backup answered; the client still resolved the name |
+| Service reachable **by name** with the primary DNS dead | yes — `HTTP/2 200`, `{"backend":"A","status":"ok"}` |
+
+Getting the backup reachable exposed a real obstacle. Mac 3 is MDM-managed and
+refused firewall changes from the command line (*"Firewall settings cannot be
+modified from command line on managed Mac computers"*), and the GUI's add button
+was locked. dnsmasq served its own loopback but was invisible on the LAN.
+Running it in the **foreground** made macOS raise its normal "accept incoming
+connections?" prompt, which could be approved; the approval attaches to the
+binary, so the background service inherited it. Diagnostically, the backend on
+TCP 3001 was reachable from Mac 1 throughout, which proved the host and network
+were fine and isolated the fault to one filtered service.
 
 An answer mismatch between the two resolvers would be worse than having no
 backup at all, because failover would silently redirect clients. The configs are
@@ -60,11 +76,32 @@ difficult rather than a matter of discipline.
 
 ### 2.2 TTL behaviour (Extension B)
 
-`dig` against dnsmasq now returns `app.cn_team.test. 30 IN A …` where Phase 1
-returned `0`. After a record change, the authoritative answer flips instantly
-while the client's cached answer persists for up to 30s, then flips by itself; a
-manual `dscacheutil -flushcache` + `killall -HUP mDNSResponder` forces it
-immediately.
+`dig` now returns `app.cn_team.test. 30 IN A …` where Phase 1 returned `0`.
+
+The record was then changed and the client watched once every two seconds:
+
+```
+23:27:06  auth=10.7.21.130  cached=10.7.21.130  served-by=10.7.21.130
+23:27:08  auth=10.7.11.169  cached=10.7.21.130  served-by=10.7.21.130   <-- stale
+23:27:13  auth=10.7.11.169  cached=10.7.21.130  served-by=10.7.21.130   <-- stale
+23:27:17  auth=10.7.11.169  cached=10.7.21.130  served-by=10.7.21.130   <-- stale
+23:27:19  auth=10.7.11.169  cached=10.7.11.169  served-by=10.7.11.169
+```
+
+For about **eleven seconds** the authoritative record had already changed while
+the client kept using its cached answer **and kept sending its HTTPS requests to
+the old edge**. Then the entry expired, the client re-resolved on its own, and
+traffic moved. Nothing was restarted on the client. That gap is the TTL.
+
+`dig` does not show the TTL counting down because it queries the authoritative
+server directly and dnsmasq re-stamps a full 30s on every answer; a TTL only
+decrements inside a cache, which on macOS is mDNSResponder — the thing
+`dscacheutil`, `ping`, `curl` and the browser all go through.
+
+One honest note: an earlier cut-over in the opposite direction showed **no**
+stale window, because that run restarted dnsmasq while the client was mid-poll
+and the brief unavailability forced an immediate re-resolve. The window above is
+the clean observation.
 
 ### 2.3 HA failover (Extension D) — the headline result
 
@@ -77,22 +114,35 @@ Phase 1 demo. One identical request through each configuration:
 | Phase 1 (nginx defaults) | HTTP 200 after **60.008 s** |
 | Phase 2 (timeouts + `max_fails`) | HTTP 200 after **0.003 s** |
 
-Burst of 8 requests through the Phase 2 edge with A still hung:
+That before/after pair is from the pre-flight dry run, because deliberately
+hanging a teammate's laptop on the night before the demo was not worth the risk.
+
+On the **real LAN**, Backend A was stopped cleanly on Mac 3
+(`lsof -ti:3001 | xargs kill`) and eight requests were sent from Mac 1:
 
 ```
-1  Backend B  200   3011ms   <- paid proxy_read_timeout, retried on B
-2  Backend B  200      5ms
-3  Backend B  200   3007ms   <- second failure, max_fails=2 reached
-4  Backend B  200      4ms   <- A ejected for fail_timeout=10s
-5-8 Backend B 200    3-4ms
-A=0  B=8  failed=0
+1  Backend B  HTTP 200   247ms        A=0  B=8  failed=0
+2  Backend B  HTTP 200  1054ms
+3  Backend B  HTTP 200    45ms
+4  Backend B  HTTP 200    60ms
+5  Backend B  HTTP 200    42ms
+6  Backend B  HTTP 200    59ms
+7  Backend B  HTTP 200   110ms
+8  Backend B  HTTP 200    43ms
 ```
 
-Exactly two slow requests, then the backend is removed from the pool and
-everything is fast. **No client-visible errors at all.** A *cleanly stopped*
-backend (connection refused rather than hung) fails over with no measurable
-delay — worst latency 4 ms — because a refusal is immediate while a hang must be
-waited out. That difference is the whole lesson of this extension.
+Every request succeeded; the client never saw an error. A direct probe to
+Backend A at the same moment returned **curl exit 7, connection refused** — the
+process was gone, the host was fine. The occasional ~1s figure is this shared
+mobile hotspot, not the failover: plain ICMP pings between these machines have
+measured over 2s on the same network. A cleanly killed process refuses the TCP
+connection instantly, so nginx moves to the next upstream with no measurable
+delay; a *hung* backend is the case that must be waited out, and that is what
+the 60.012s → 0.004s pair above quantifies.
+
+Backend A was then restarted and ten more requests sent: **A=5, B=5, failed=0**.
+nginx re-probes an ejected upstream once `fail_timeout` (10s) has elapsed, so
+recovery is automatic — nothing on the edge was reloaded or reconfigured.
 
 With both backends stopped, the edge returns `502 Bad Gateway` in 3 ms. The 502
 is generated by nginx itself, so it simultaneously proves the edge is healthy and
@@ -101,9 +151,17 @@ application layer.
 
 ### 2.4 Service isolation (Extension C)
 
-With pf loaded on Mac 3 and Mac 4, a client's direct connection to `:3001` and
-`:3002` **times out**, while the same resource through `https://app.cn_team.test/`
-continues to work. `block drop` was chosen over `block return` deliberately: a
+With pf loaded on Mac 3 and Mac 4, tested from Mac 1 (neither an edge nor a
+backend, so the honest tester):
+
+```
+Backend A  http://10.7.25.47:3001   -> connection TIMED OUT after 4s
+Backend B  http://10.7.21.130:3002  -> connection TIMED OUT after 4s
+https://app.cn_team.test/api/status -> {"backend":"A","status":"ok"}
+```
+
+The backends are unreachable directly while the same resource through the edge
+still works. `block drop` was chosen over `block return` deliberately: a
 drop produces a timeout (something is filtering you) rather than a refusal
 (nothing is listening), which is how a real firewall behaves and which is a
 distinction the diagnosis procedure depends on.
@@ -116,16 +174,26 @@ stock macOS ruleset and the original enabled/disabled state.
 ### 2.5 Edge migration (Extension E)
 
 Primary and standby serve the same name and the **same certificate**; which one
-actually answered is read off `curl`'s `%{remote_ip}`, so no extra server
-configuration is needed to observe the migration.
-`scripts/dns-cutover.sh to-standby` rewrites both A records (after taking a
-timestamped backup) and reloads dnsmasq; the standby then serves the traffic.
-Clients holding a cached answer keep reaching the old edge until their TTL
-expires — the TTL lag from §2.2 and the migration are the same phenomenon viewed
-from two angles.
+actually answered is read off `curl`'s `%{remote_ip}`, so nothing extra had to be
+configured on either server to observe the migration.
 
-TLS does not break across the migration because a certificate is bound to a
-**name**, not to a machine or an IP.
+`scripts/dns-cutover.sh to-standby` rewrote both A records (after taking a
+timestamped backup of `dnsmasq.conf`) and restarted dnsmasq. Watched from Mac 1:
+
+```
+23:23:32  authoritative=10.7.11.169  cached=10.7.11.169  served-by=10.7.11.169   (primary)
+23:23:35  authoritative=10.7.21.130  cached=10.7.21.130  served-by=10.7.21.130   (STANDBY)
+```
+
+The public entry point of the service moved to a different physical machine.
+On the client: same URL, same certificate, no warning, no restart, nothing
+reconfigured. Only the name was repointed. TLS survived because the certificate
+is issued to the **name** `app.cn_team.test`, not to a machine or an IP.
+
+The cut back to the primary is the run quoted in §2.2, where the eleven-second
+stale window was visible — during it, new lookups went to the primary while this
+client was still reaching the standby. The TTL lag and the migration are the
+same phenomenon seen from two angles.
 
 ### 2.6 Remaining single point of failure
 
@@ -190,6 +258,58 @@ would otherwise have surfaced in front of the evaluator:
    overwriting their real provenance comments with placeholder boilerplate. Those
    files are a graded deliverable, so the script now rewrites only the IP values
    in them, in place, preserving every comment.
+
+### 3.3 Three real faults diagnosed while bringing the system up
+
+These were not injected. They happened while assembling the live system on
+2026-11-22, and each one was isolated by the layered method rather than guessed.
+
+**1. A service that reported success but was dead.** On Mac 3,
+`sudo brew services restart dnsmasq` printed *"Successfully started"*, yet
+`dig @127.0.0.1` on that same machine timed out. A firewall never filters
+loopback, so a localhost timeout eliminated the entire network stack as a
+suspect in one step — the service simply was not serving. `brew services`
+swallows a daemon's stderr; running the binary in the foreground printed the
+cause immediately:
+
+```
+dnsmasq: failed to create listening socket for 10.7.20.9: Can't assign requested address
+```
+
+`10.7.20.9` was that machine's IP on 4 October. The hotspot had since reassigned
+it to `10.7.25.47`, and a process cannot bind an address the host does not own.
+The stale value came from a `git pull` taken before the IP table was updated.
+Lesson: *"started" means the process was launched, not that it works.*
+
+**2. The same service, blocked only from outside.** Once running, dnsmasq
+answered its own loopback but was unreachable from Mac 1, while Backend A on
+TCP 3001 on that *same host* answered Mac 1 fine. One port filtered and another
+open on one host points at a per-application firewall, not at the host or the
+network. Mac 3 is MDM-managed and refused `socketfilterfw` changes from the
+command line, and the GUI control was locked. Running dnsmasq in the foreground
+triggered macOS's ordinary "accept incoming connections?" prompt, which could be
+approved; the approval attaches to the binary, so the background service
+inherited it.
+
+Worth noting that the two failures above produced two *different* error strings
+for "it will not start", and the string alone identified the cause:
+
+| Error | Meaning |
+|---|---|
+| `Can't assign requested address` | the IP does not belong to this host |
+| `Permission denied` (when run without sudo) | the IP is fine; the user may not bind a port below 1024 |
+
+**3. Two extensions that silently contradicted each other.** The Extension C
+firewall originally allowed only Mac 2 to reach the backend ports. That is
+correct right up until Extension E moves the edge: the moment the DNS record
+pointed at the standby on Mac 4, the standby would have been firewalled out of
+both backends and returned 502 for everything, while the firewall looked
+perfectly healthy. This was caught by reasoning about the rules before running
+the cutover, not by hitting the failure. The fix was to allow the **edge tier**
+— primary and standby — rather than one host, which is how a real security group
+is written: it permits the load-balancer tier, not a specific load-balancer.
+Re-verified afterwards that the backends still time out from a client while the
+standby can reach them.
 
 ### 3.3 Findings carried over from Phase 1
 
