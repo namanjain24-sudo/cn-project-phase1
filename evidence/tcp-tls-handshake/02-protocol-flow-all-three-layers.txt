@@ -1,0 +1,92 @@
+=== TASK G — COMPLETE PROTOCOL FLOW IN WIRESHARK ===
+=== Capture taken on Mac 3 (Hemanth) acting as the client ===
+=== Re-filtered 2026-11-22 to expose the DNS layer ===
+
+IP addresses in this capture are the 30 September set (see the IP history
+table in docs/topology.md):
+    10.7.12.33   Mac 3, the client running the capture
+    10.7.6.95    Mac 1, the DNS server
+    10.7.11.169  Mac 2, the nginx edge  (unchanged to this day)
+
+WHY THIS NEEDED RE-FILTERING
+  The original filter was 'ip.addr==10.7.11.169 and tcp.port==443'. That hid
+  the DNS packets completely -- DNS runs over UDP, so tcp.port==443 excludes
+  it, and DNS goes to Mac 1, so ip.addr==10.7.11.169 excludes it too. The
+  packets were in the file the whole time. Task G asks for DNS, TCP and TLS,
+  so all three filters are recorded below.
+
+---------------------------------------------------------------------------
+1. DNS            filter: dns          screenshot: 02-dns-query-and-response.png
+---------------------------------------------------------------------------
+  #735  10.7.12.33 -> 10.7.6.95   DNS  87   Standard query 0x24e1 A app.cn_team.test
+  #747  10.7.6.95  -> 10.7.12.33  DNS  103  Standard query response 0x24e1 A
+                                            app.cn_team.test A 10.7.11.169
+  #749  10.7.12.33 -> 10.7.6.95   DNS  76   Standard query 0x697a A app.cn_team.test
+  #750  10.7.6.95  -> 10.7.12.33  DNS  92   Standard query response 0x697a A
+                                            app.cn_team.test A 10.7.11.169
+
+  The detail pane for frame 735 shows the full stack and, critically, the ports:
+      Ethernet II,  Src e6:67:77:23:5c:70  Dst ea:13:1a:a7:22:15
+      Internet Protocol Version 4,  Src 10.7.12.33  Dst 10.7.6.95
+      User Datagram Protocol,  Src Port: 57580,  Dst Port: 53
+      Domain Name System (query)
+
+  PORT IDENTIFICATION, which Task G asks for explicitly:
+      57580 = the client's EPHEMERAL source port, different on every lookup
+         53 = the server's WELL-KNOWN destination port for DNS, over UDP
+
+  The query ID 0x24e1 appears in both the query and its response -- that is
+  how a client matches an answer to its question over a connectionless
+  protocol, since UDP gives no connection to associate them with.
+
+  DNS's job ends here. It has turned a name into an address and opened nothing.
+
+---------------------------------------------------------------------------
+2. TCP HANDSHAKE  filter: tcp.flags.syn==1   screenshot: 03-tcp-three-way-handshake.png
+---------------------------------------------------------------------------
+  #752  10.7.12.33 -> 10.7.11.169  49358 -> 443  [SYN]       Seq=0
+  #758  10.7.11.169 -> 10.7.12.33  443 -> 49358  [SYN, ACK]  Seq=0 Ack=1
+  (the third packet, the bare ACK, has no SYN flag so this filter hides it;
+   drop the filter or use 'tcp.port==49358' to see the full three-way set)
+
+      Src Port: 49358  (client ephemeral)   Dst Port: 443  (well-known HTTPS)
+
+  A SECOND, SEPARATE HANDSHAKE IS ALSO VISIBLE, and it is worth pointing at:
+  #776  10.7.11.169 -> 10.7.12.33  56579 -> 3001  [SYN]
+  #779  10.7.12.33 -> 10.7.11.169  3001 -> 56579  [SYN, ACK]
+
+  That is nginx on Mac 2 opening its OWN connection to Backend A on port 3001,
+  from its own ephemeral port 56579. It proves the proxy model directly: the
+  client's connection terminates at the edge, and the edge makes a completely
+  separate TCP connection to the backend. The client never talks to :3001.
+
+---------------------------------------------------------------------------
+3. TLS HANDSHAKE  filter: tls.handshake      screenshot: 04-tls-handshake.png
+---------------------------------------------------------------------------
+  #760  10.7.12.33 -> 10.7.11.169  392   Client Hello (SNI=app.cn_team.test)
+  #763  10.7.11.169 -> 10.7.12.33  1514  Server Hello, Change Cipher Spec,
+                                         Application Data
+
+      Src Port: 49358, Dst Port: 443 -- the SAME socket pair as the TCP
+      handshake above. TLS runs ON TOP of that already-established connection.
+
+  The SNI is readable in plaintext: app.cn_team.test. That is deliberate in the
+  protocol -- the server must know which certificate to present before any
+  encryption exists. It is also why a name can be seen on the wire even when
+  the content cannot.
+
+  From #763 onward the capture shows only 'Application Data'. The HTTP request
+  and response are inside those records and cannot be read. That is the single
+  clearest demonstration of what TLS is for: the connection is fully provable
+  from the outside, the content is not.
+
+---------------------------------------------------------------------------
+TASK G CHECKLIST
+---------------------------------------------------------------------------
+  DNS query + response, answer = Mac 2's IP ................ frames 735 / 747
+  TCP SYN -> SYN-ACK -> ACK before any application data .... frames 752 / 758
+  TLS ClientHello, ServerHello, ChangeCipherSpec ........... frames 760 / 763
+  Application Data encrypted, HTTP unreadable .............. frame 763 onward
+  Ephemeral vs well-known ports, both layers ............... 57580->53/UDP,
+                                                             49358->443/TCP
+  Load balancing visible in X-Backend ...................... evidence/load-balancing/
