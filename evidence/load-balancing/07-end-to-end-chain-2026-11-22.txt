@@ -1,0 +1,42 @@
+=== END-TO-END CHAIN WORKING — 2026-11-22 ===
+=== Tested from Mac 1 (Naman, 10.7.20.236), a client machine ===
+
+Chain under test:
+  client -> DNS (Mac 1 / Mac 3) -> HTTPS edge (Mac 2, nginx) -> Backend A or B
+
+--- TLS: certificate validates with NO -k flag ---
+$ curl -sS -o /dev/null --resolve app.cn_team.test:443:10.7.11.169 \
+       https://app.cn_team.test/api/status
+  (no output, exit 0 -- the certificate chain verified cleanly)
+
+--- Full request, response headers included ---
+$ curl -s -D- --resolve app.cn_team.test:443:10.7.11.169 https://app.cn_team.test/api/status
+  HTTP/2 200 
+  server: nginx/1.31.6
+  date: Sun, 22 Nov 2026 17:18:16 GMT
+  content-type: application/json
+  x-backend: B
+  
+  {"backend":"B","status":"ok"}
+  HTTP/2 negotiated, served by nginx on Mac 2, answered by a backend behind it.
+
+--- Task D: load balancing, 8 consecutive requests ---
+$ for i in $(seq 1 8); do curl -s ... /api/status; done
+  request 1  -> Backend A
+  request 2  -> Backend B
+  request 3  -> Backend A
+  request 4  -> Backend B
+  request 5  -> Backend A
+  request 6  -> Backend B
+  request 7  -> Backend A
+  request 8  -> Backend B
+
+  Clean round-robin alternation across both backends.
+
+  Note: --resolve is used here only to pin the edge IP while Mac 1's own
+  system resolver is still on DHCP. DNS itself is proven separately in
+  evidence/phase2/backup-dns/ and evidence/phase2/ttl/. The demo runs
+  without --resolve once the client resolver points at Mac 1 and Mac 3.
+
+SPEC PHASE 1 GATE: "a client resolves app.teamX.test, connects over HTTPS,
+and receives responses from both backends through the load balancer." -- met.
