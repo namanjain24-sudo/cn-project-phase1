@@ -1,0 +1,21 @@
+=== Task A — all four machines reachable, 2026-11-22 ===
+=== Run from Mac 1 (Naman, 10.7.20.236) ===
+
+$ ping -c 3 10.7.11.169 Mac2-Harsha-edge   # 
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 35.351/78.513/106.810/31.009 ms
+
+$ ping -c 3 10.7.25.47 Mac3-Hemanth-backendA   # 
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 6.718/48.261/109.480/44.199 ms
+
+$ ping -c 3 10.7.21.130 Mac4-Akshay-backendB   # 
+  3 packets transmitted, 3 packets received, 0.0% packet loss
+  round-trip min/avg/max/stddev = 70.463/84.008/95.843/10.432 ms
+
+=== Task C — Backend A reachable across the LAN (not just localhost) ===
+$ curl -s http://10.7.25.47:3001/api/status
+  {"backend":"A","status":"ok"}
+
+  Confirms Hemanth's server.js is bound to 0.0.0.0, not 127.0.0.1 --
+  which is what lets nginx on Mac 2 reach it at all.
